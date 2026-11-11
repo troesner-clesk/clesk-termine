@@ -845,6 +845,19 @@
 	margin-inline: auto;
 }
 
+/*
+ * GeneratePress Premium kann den Kopf über den Inhalt legen („Merge“), gedacht für einen Seitenkopf mit Bild
+ * oder Farbfläche. Folgt ihm auf der Terminseite keiner, rückt der Kopf zurück in den Seitenfluss. Wäre das
+ * Menü auf dem Seitenhintergrund nicht lesbar, setzt assets/headband.js die Klasse ctt-headband.
+ */
+.ctt-single-page .header-wrap:has(+ .site) {
+	position: relative;
+}
+
+.ctt-single-page .header-wrap.ctt-headband {
+	background-color: var(--contrast, #222);
+}
+
 .ctt .ctt-single__head {
 	display: grid;
 	grid-template-columns: 136px minmax(0, 1fr);
@@ -918,6 +931,13 @@
 	font-size: 19px;
 	font-weight: 700;
 	line-height: 1.35;
+}
+
+/* Ohne eigene Überschrift (das Theme zeigt den Titel im Seitenkopf) führt das Datum den Terminkopf an. */
+.ctt .ctt-single__main > .ctt-single__when:first-child {
+	font-size: 22px;
+	font-size: clamp(20px, 3.2cqi, 24px);
+	line-height: 1.25;
 }
 
 .ctt .ctt-single__where {

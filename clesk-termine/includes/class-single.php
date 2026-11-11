@@ -15,11 +15,25 @@ defined( 'ABSPATH' ) || exit;
 final class Clesk_Termine_Single {
 
 	/**
-	 * Gibt die Terminseite die Überschrift selbst aus (statt des Themes)?
+	 * Gibt die Terminseite die Überschrift selbst aus (statt des Themes)? null = noch nicht entschieden.
+	 *
+	 * @var bool|null
+	 */
+	private static $print_title = null;
+
+	/**
+	 * Zeigt das Theme auf dieser Seite seine eigene Überschrift (GeneratePress: nicht abgeschaltet)?
 	 *
 	 * @var bool
 	 */
-	private static $print_title = false;
+	private static $theme_title = true;
+
+	/**
+	 * Wird gerade nur abgefragt, was das Theme zur Überschrift entschieden hat?
+	 *
+	 * @var bool
+	 */
+	private static $probing = false;
 
 	/**
 	 * Läuft gerade die Hauptschleife des Themes?
@@ -93,26 +107,87 @@ final class Clesk_Termine_Single {
 		add_filter( 'has_post_thumbnail', array( __CLASS__, 'hide_theme_thumbnail' ), 10, 2 );
 		add_filter( 'post_thumbnail_html', array( __CLASS__, 'hide_theme_thumbnail_html' ), 10, 2 );
 
-		// GeneratePress: keine Seitenleiste, Überschrift kommt aus dem Terminkopf (nur wenn es einen Titel gibt).
-		$own_title = function_exists( 'generate_get_layout' ) && '' !== trim( (string) $post->post_title );
+		// GeneratePress: keine Seitenleiste, die Überschrift kommt aus dem Terminkopf (siehe print_title()).
 		if ( function_exists( 'generate_get_layout' ) ) {
 			add_filter( 'generate_sidebar_layout', array( __CLASS__, 'no_sidebar' ) );
-		}
-
-		/**
-		 * Soll die Terminseite die Überschrift (h1) selbst ausgeben?
-		 * Standard: nur bei GeneratePress, andere Themes zeigen den Titel selbst. Wer die Überschrift
-		 * über ein eigenes Element ausgibt (z. B. einen Seitenkopf aus GP Premium), schaltet sie hier ab.
-		 */
-		self::$print_title = (bool) apply_filters( 'clesk_termine_single_print_title', $own_title );
-		if ( self::$print_title && function_exists( 'generate_get_layout' ) ) {
-			add_filter( 'generate_show_title', '__return_false' );
-			add_filter( 'generate_show_entry_header', '__return_false' );
+			add_filter( 'generate_show_title', array( __CLASS__, 'theme_title' ), 99 );
+			add_filter( 'generate_show_entry_header', array( __CLASS__, 'theme_entry_header' ), 99 );
+			if ( defined( 'GP_PREMIUM_VERSION' ) ) {
+				add_action( 'generate_inside_site_container', array( __CLASS__, 'header_band_script' ), 1 );
+			}
 		}
 
 		if ( self::outputs_meta() ) {
 			add_filter( 'document_title_parts', array( __CLASS__, 'title_parts' ) );
 			add_action( 'wp_head', array( __CLASS__, 'head_meta' ), 1 );
+		}
+	}
+
+	/**
+	 * Gibt die Terminseite die Überschrift (h1) selbst aus?
+	 *
+	 * Bei GeneratePress ja, andere Themes zeigen ihren Titel selbst. Hat GeneratePress die Überschrift
+	 * für diese Seite abgeschaltet (etwa weil ein Seitenkopf aus GP Premium den Titel zeigt), steht sie
+	 * auch im Terminkopf nicht noch einmal. Entschieden wird erst beim Rendern: Dann haben Theme und
+	 * Erweiterungen ihre Einstellungen sicher angemeldet.
+	 *
+	 * @return bool
+	 */
+	private static function print_title() {
+		if ( null === self::$print_title ) {
+			$post = get_queried_object();
+			$own  = function_exists( 'generate_get_layout' ) && $post instanceof WP_Post && '' !== trim( (string) $post->post_title );
+			if ( function_exists( 'generate_show_title' ) ) {
+				self::$probing     = true;
+				self::$theme_title = (bool) generate_show_title();
+				self::$probing     = false;
+			}
+
+			/**
+			 * Soll die Terminseite die Überschrift (h1) selbst ausgeben?
+			 * Standard: bei GeneratePress, solange das Theme seine Überschrift dort nicht abgeschaltet hat.
+			 */
+			self::$print_title = (bool) apply_filters( 'clesk_termine_single_print_title', $own && self::$theme_title );
+		}
+		return self::$print_title;
+	}
+
+	/**
+	 * GeneratePress: Steht die Überschrift im Terminkopf, gibt das Theme sie nicht noch einmal aus.
+	 *
+	 * @param bool $show Bisherige Entscheidung des Themes.
+	 * @return bool
+	 */
+	public static function theme_title( $show ) {
+		if ( self::$probing ) {
+			return $show;
+		}
+		return self::print_title() ? false : $show;
+	}
+
+	/**
+	 * GeneratePress: Kopfbereich des Beitrags nur zeigen, wenn das Theme dort die Überschrift ausgibt.
+	 * Sonst bliebe ein leerer Bereich mit Abstand über dem Termin.
+	 *
+	 * @param bool $show Bisherige Entscheidung des Themes.
+	 * @return bool
+	 */
+	public static function theme_entry_header( $show ) {
+		return ( self::print_title() || ! self::$theme_title ) ? false : $show;
+	}
+
+	/**
+	 * GeneratePress Premium kann den Kopf über den Inhalt legen („Merge“), gedacht für einen Seitenkopf
+	 * mit Bild oder Farbfläche. Fehlt der auf der Terminseite, holt das CSS den Kopf zurück in den
+	 * Seitenfluss. Das Skript assets/headband.js prüft zusätzlich, ob das Menü auf dem Seitenhintergrund
+	 * lesbar ist, und gibt dem Kopf sonst eine Fläche in der Textfarbe der Seite (Klasse ctt-headband).
+	 * Es steht direkt hinter dem Kopf in der Seite, damit nichts nachträglich umspringt.
+	 */
+	public static function header_band_script() {
+		$file = CLESK_TERMINE_DIR . 'assets/headband.js';
+		$js   = is_readable( $file ) ? (string) file_get_contents( $file ) : ''; // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- lokale Plugin-Datei.
+		if ( '' !== $js ) {
+			wp_print_inline_script_tag( $js, array( 'id' => 'clesk-termine-headband' ) );
 		}
 	}
 
@@ -619,7 +694,7 @@ final class Clesk_Termine_Single {
 		}
 
 		$html .= '<div class="ctt-single__main">';
-		if ( self::$print_title && '' !== $e['title'] ) {
+		if ( self::print_title() && '' !== $e['title'] ) {
 			$html .= '<h1 class="ctt-single__title">' . esc_html( $e['title'] ) . '</h1>';
 		}
 

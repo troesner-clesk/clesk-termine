@@ -35,9 +35,10 @@ Voraussetzungen: WordPress 6.3 oder neuer, PHP 7.4 oder neuer. Der HTML-Anker de
 - „Alle Termine“ auf der Terminseite führt zur veröffentlichten Seite mit dem Block „Termine“ und springt dort zur Liste. Gibt es mehrere, gewinnt die mit der vollständigen Liste.
 - Termine haben kein Archiv und keinen Feed: Sammeladressen wie `/?post_type=clesk_termin` leiten zur Übersicht um.
 - Die Basis `termine` belegt alle Adressen unterhalb von `/termine/`. Eine vorhandene Seite `/termine/` bleibt erreichbar, ihre Unterseiten nicht. Wer das braucht, wählt über `clesk_termine_slug` eine andere Basis.
-- Die Seite nutzt die Einzelansicht des Themes (Kopf, Fuß, Inhaltsbreite) und ersetzt nur den Inhalt. Bei GeneratePress gibt das Plugin die Überschrift selbst aus und blendet Seitenleiste und Beitragsbild des Themes aus; andere Themes zeigen ihren eigenen Titel.
+- Die Seite nutzt die Einzelansicht des Themes (Kopf, Fuß, Inhaltsbreite) und ersetzt nur den Inhalt. Bei GeneratePress gibt das Plugin die Überschrift selbst aus und blendet Seitenleiste und Beitragsbild des Themes aus; andere Themes zeigen ihren eigenen Titel. Ist die Überschrift in GeneratePress für die Seite abgeschaltet (Inhaltstitel im Layout-Kasten des Termins oder die Option „Disable title“ eines Elements aus GP Premium), lässt auch das Plugin sie weg.
 - Ist ein SEO-Plugin aktiv (Yoast SEO, Rank Math, SEOPress, All in One SEO, The SEO Framework, Slim SEO), überlässt das Plugin ihm Seitentitel, Beschreibung und Open-Graph-Daten. Die strukturierten Daten gibt es weiterhin aus. Für Indexierung und Sitemap gelten dann die Einstellungen des SEO-Plugins: „noindex“ und die Auswahl der Sitemap wirken nur auf die Ausgabe von WordPress selbst.
-- GeneratePress mit GP Premium: Kommen Kopfbereich oder Überschrift der Unterseiten aus Elementen (Design → Elemente, zum Beispiel ein mit dem Inhalt verschmolzener Header oder ein Seitenkopf mit dem Titel), entscheiden deren Anzeigeregeln, ob sie auch für den Beitragstyp „Termine“ gelten. Nach dem Aktivieren eine Terminseite ansehen und den Beitragstyp bei Bedarf in die Anzeigeregeln aufnehmen. Zeigt ein Element den Titel bereits als Überschrift, die Überschrift des Plugins abschalten: `add_filter( 'clesk_termine_single_print_title', '__return_false' );` in der `functions.php` des Child-Themes.
+- GeneratePress mit GP Premium: Kommen Kopfbereich oder Überschrift der Unterseiten aus Elementen (Design → Elemente, zum Beispiel ein über den Inhalt gelegter Header oder ein Seitenkopf mit dem Titel), entscheiden deren Anzeigeregeln, ob sie auch für den Beitragstyp „Termine“ gelten. Soll die Terminseite denselben Seitenkopf bekommen wie die übrigen Unterseiten, den Beitragstyp „Termine“ in die Anzeigeregeln dieses Elements aufnehmen. Ist dort „Disable title“ gesetzt, zeigt nur noch der Seitenkopf die Überschrift, der Terminkopf beginnt dann mit dem Datum.
+- Liegt der Header über dem Inhalt („Merge“) und folgt ihm auf der Terminseite kein Seitenkopf, holt das Plugin ihn zurück in den Seitenfluss. Wäre das Menü auf dem Seitenhintergrund nicht lesbar (helle Schrift auf hellem Grund), bekommt der Header eine Fläche in der Textfarbe der Seite. Andere Farbe: `.ctt-single-page .header-wrap.ctt-headband { background-color: … }`.
 
 ## Block-Einstellungen
 
@@ -94,7 +95,7 @@ Filter für Entwickler (vor `init` registrieren, zum Beispiel in der `functions.
 | `clesk_termine_overview_url` | Ziel von „Alle Termine“ auf der Terminseite | automatisch erkannt |
 | `clesk_termine_performer` | Künstlername in den strukturierten Daten | Website-Titel bis zum ersten Trenner |
 | `clesk_termine_output_meta` | Seitentitel, Beschreibung und Open Graph der Terminseiten ausgeben | `true` ohne SEO-Plugin |
-| `clesk_termine_single_print_title` | Überschrift der Terminseite selbst ausgeben | `true` bei GeneratePress und vorhandenem Titel |
+| `clesk_termine_single_print_title` | Überschrift der Terminseite selbst ausgeben | `true` bei GeneratePress und vorhandenem Titel, solange das Theme die Überschrift dort nicht abgeschaltet hat |
 
 ## Datenmodell
 
