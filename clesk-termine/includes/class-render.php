@@ -336,7 +336,7 @@ final class Clesk_Termine_Render {
 		$html .= '<div class="' . esc_attr( implode( ' ', $classes ) ) . '">';
 		$html .= '<div class="ctt-event__date" aria-hidden="true">' . self::date_html( $e, $a ) . '</div>';
 		if ( $has_media ) {
-			$html .= self::media_html( $e );
+			$html .= self::media_html( $e, $a );
 		}
 		$html .= '<div class="ctt-event__main">' . self::main_html( $e, $a['design'], $a['linkDetails'] ) . '</div>';
 
@@ -386,30 +386,37 @@ final class Clesk_Termine_Render {
 	}
 
 	/**
-	 * Bildspalte (Design „Karten“). Ohne Bild ein ruhiger Platzhalter.
+	 * Bildfläche (Design „Karten“). Ohne Bild eine ruhige Fläche, auf der das Kalenderblatt sitzt.
+	 * Mit Terminseiten ist die Fläche ein Link dorthin (gleiches Ziel wie der Titel, deshalb für
+	 * Tastatur und Screenreader ausgeblendet).
 	 *
 	 * @param array $e Termin.
+	 * @param array $a Attribute.
 	 * @return string
 	 */
-	private static function media_html( array $e ) {
+	private static function media_html( array $e, array $a ) {
+		$img = '';
 		if ( $e['image_id'] ) {
-			$img = wp_get_attachment_image(
+			$img = (string) wp_get_attachment_image(
 				$e['image_id'],
-				'medium',
+				'large',
 				false,
 				array(
 					'class'    => 'ctt-event__img',
 					'alt'      => '',
 					'loading'  => 'lazy',
 					'decoding' => 'async',
-					'sizes'    => '120px',
+					// Schmal steht das Bild in voller Breite über dem Text, sonst in der 208 px breiten Spalte.
+					'sizes'    => '(max-width: 700px) 100vw, 208px',
 				)
 			);
-			if ( $img ) {
-				return '<div class="ctt-event__media">' . $img . '</div>';
-			}
 		}
-		return '<div class="ctt-event__media ctt-event__media--empty"></div>';
+
+		$inner = $img;
+		if ( $a['linkDetails'] && '' !== $e['url'] && '' !== $e['title'] ) {
+			$inner = '<a class="ctt-event__media-link" href="' . esc_url( $e['url'] ) . '" tabindex="-1" aria-hidden="true">' . $img . '</a>';
+		}
+		return '<div class="ctt-event__media' . ( '' === $img ? ' ctt-event__media--empty' : '' ) . '">' . $inner . '</div>';
 	}
 
 	/**

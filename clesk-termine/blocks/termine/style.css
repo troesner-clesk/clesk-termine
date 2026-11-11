@@ -547,6 +547,17 @@
 	object-fit: cover;
 }
 
+/* Die ganze Bildfläche führt zur Terminseite. Das Kalenderblatt darüber lässt Klicks durch. */
+.ctt--karten .ctt-event__media-link {
+	position: absolute;
+	inset: 0;
+	display: block;
+}
+
+.ctt--karten .ctt-groups--media .ctt-event__date {
+	pointer-events: none;
+}
+
 .ctt--karten .ctt-event__main {
 	grid-area: main;
 	padding: 16px 22px;
