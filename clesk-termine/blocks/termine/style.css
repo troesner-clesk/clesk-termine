@@ -547,6 +547,19 @@
 	object-fit: cover;
 }
 
+/* Ohne Bild steht ein großes Ticketsymbol in der Bildfläche, rechts neben dem Kalenderblatt. */
+.ctt--karten .ctt-event__media .ctt-event__placeholder {
+	position: absolute;
+	top: 50%;
+	right: 14%;
+	width: 60px;
+	height: 60px;
+	color: var(--ctt-accent);
+	opacity: 0.35;
+	stroke-width: 1.5;
+	transform: translateY(-50%) rotate(-12deg);
+}
+
 /* Die ganze Bildfläche führt zur Terminseite. Das Kalenderblatt darüber lässt Klicks durch. */
 .ctt--karten .ctt-event__media-link {
 	position: absolute;

@@ -1,6 +1,7 @@
 /**
  * Termine: Vorschläge im Titelfeld, Stadt und Anschrift zur bekannten Location ergänzen,
- * Veröffentlichen ohne Datum abfangen, nach dem Duplizieren die zu ändernden Felder markieren.
+ * Veröffentlichen ohne Datum abfangen, nach dem Duplizieren die zu ändernden Felder markieren,
+ * am eingeklappten Abschnitt „Weitere Angaben“ nennen, was dort gefüllt ist.
  */
 ( function () {
 	'use strict';
@@ -50,6 +51,40 @@
 		}
 	}
 
+	// Der Abschnitt „Weitere Angaben“ ist eingeklappt. Seine Zeile nennt, welche Angaben gefüllt sind,
+	// auch wenn das Formular die Anschrift gerade selbst ergänzt oder geleert hat.
+	var filled = document.getElementById( 'ctt-more-filled' );
+	var extras = data.extras || {};
+	var note = document.getElementById( 'ctt-note' );
+	var info = document.getElementById( 'ctt-info' );
+
+	function hasValue( field ) {
+		return !! field && field.value.trim() !== '';
+	}
+
+	function updateFilled() {
+		if ( ! filled ) {
+			return;
+		}
+		var names = [];
+		if ( hasValue( note ) ) {
+			names.push( extras.note );
+		}
+		if ( hasValue( street ) || hasValue( zip ) ) {
+			names.push( extras.address );
+		}
+		if ( hasValue( info ) ) {
+			names.push( extras.info );
+		}
+		filled.textContent = names.length ? extras.prefix + ' ' + names.join( ', ' ) : '';
+	}
+
+	[ note, street, zip, info ].forEach( function ( field ) {
+		if ( field ) {
+			field.addEventListener( 'input', updateFilled );
+		}
+	} );
+
 	var cityState = track( city, false );
 	var streetState = track( street, true );
 	var zipState = track( zip, true );
@@ -83,6 +118,7 @@
 			fill( streetState, '' );
 			fill( zipState, '' );
 		}
+		updateFilled();
 	}
 
 	if ( venue && city ) {

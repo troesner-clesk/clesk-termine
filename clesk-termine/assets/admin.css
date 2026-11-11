@@ -63,6 +63,17 @@
 	margin-bottom: 12px;
 }
 
+/* Nennt am eingeklappten Abschnitt, welche Angaben gefüllt sind. */
+.ctt-admin__filled {
+	margin-left: 6px;
+	color: #646970;
+	font-weight: 400;
+}
+
+.ctt-admin__filled:empty {
+	display: none;
+}
+
 .ctt-admin__tip {
 	margin: 18px 0 2px;
 	padding: 10px 12px;
@@ -113,16 +124,334 @@
 
 /* Terminliste */
 
+.post-type-clesk_termin .wp-list-table .column-ctt_image {
+	width: 112px;
+}
+
 .post-type-clesk_termin .wp-list-table .column-ctt_date {
-	width: 150px;
+	width: 130px;
 }
 
 .post-type-clesk_termin .wp-list-table .column-ctt_status {
-	width: 160px;
+	width: 215px;
 }
 
 .post-type-clesk_termin .wp-list-table .column-ctt_ticket {
-	width: 80px;
+	width: 110px;
+}
+
+/* Luftigere Zeilen mit mittig ausgerichteten Zellen. Schmal stapelt WordPress die Zellen, dort bleibt es bei den Standardabständen. */
+@media screen and (min-width: 783px) {
+	.post-type-clesk_termin .wp-list-table tbody td,
+	.post-type-clesk_termin .wp-list-table tbody th {
+		padding-top: 12px;
+		padding-bottom: 12px;
+		vertical-align: middle;
+	}
+
+	.post-type-clesk_termin .wp-list-table tbody .column-title {
+		font-size: 14px;
+	}
+}
+
+.post-type-clesk_termin .wp-list-table tbody td.is-saving {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+/* Schnelleinstellungen: Rückmeldung nach dem Speichern */
+
+.ctt-quick-flash {
+	display: block;
+	margin-top: 4px;
+	color: #00631d;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.ctt-quick-flash--error {
+	color: #b32d2e;
+}
+
+/* Schnelleinstellungen: Bild */
+
+.ctt-quick-image {
+	position: relative;
+	width: 96px;
+}
+
+.ctt-quick-image__pick {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
+	width: 96px;
+	height: 60px;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #f6f7f7;
+	color: #50575e;
+	font: inherit;
+	cursor: pointer;
+}
+
+.ctt-quick-image--static {
+	display: block;
+	width: 96px;
+	height: 60px;
+	overflow: hidden;
+	border-radius: 8px;
+}
+
+.ctt-quick-image .ctt-quick-image__img,
+.ctt-quick-image--static .ctt-quick-image__img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.ctt-quick-image--empty .ctt-quick-image__pick {
+	border-style: dashed;
+	border-color: #a7aaad;
+	background: #fff;
+}
+
+.ctt-quick-image__add {
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.ctt-quick-image__hint {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(29, 35, 39, 0.62);
+	color: #fff;
+	font-size: 12px;
+	font-weight: 600;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+}
+
+.ctt-quick-image__pick:hover,
+.ctt-quick-image__pick:focus-visible {
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.ctt-quick-image__pick:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+.ctt-quick-image__pick:hover .ctt-quick-image__hint,
+.ctt-quick-image__pick:focus-visible .ctt-quick-image__hint {
+	opacity: 1;
+}
+
+.ctt-quick-image__remove {
+	position: absolute;
+	top: -7px;
+	right: -7px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	margin: 0;
+	padding: 0;
+	border: 1px solid #c3c4c7;
+	border-radius: 50%;
+	background: #fff;
+	color: #b32d2e;
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.12s ease;
+}
+
+.ctt-quick-image__remove .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.ctt-quick-image:hover .ctt-quick-image__remove,
+.ctt-quick-image__remove:focus-visible {
+	opacity: 1;
+}
+
+.ctt-quick-image__remove:hover,
+.ctt-quick-image__remove:focus-visible {
+	border-color: #b32d2e;
+	outline: none;
+	box-shadow: 0 0 0 1px #b32d2e;
+}
+
+/* Ohne Maus sind die Bedienelemente immer sichtbar. */
+@media (hover: none) {
+	.ctt-quick-image__remove {
+		opacity: 1;
+	}
+}
+
+/* Schnelleinstellungen: Status */
+
+.wp-core-ui select.ctt-quick-status {
+	max-width: 100%;
+	min-height: 28px;
+	padding: 0 26px 0 12px;
+	border-color: #dcdcde;
+	border-radius: 999px;
+	background-color: #f6f7f7;
+	background-position: right 7px top 55%;
+	color: #50575e;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 26px;
+	cursor: pointer;
+}
+
+.wp-core-ui select.ctt-quick-status:hover,
+.wp-core-ui select.ctt-quick-status:focus {
+	border-color: #2271b1;
+	color: #1d2327;
+}
+
+.wp-core-ui select.ctt-quick-status[data-status="soldout"],
+.wp-core-ui select.ctt-quick-status[data-status="cancelled"] {
+	border-color: #f1b7ba;
+	background-color: #fcf0f1;
+	color: #8a2424;
+}
+
+.wp-core-ui select.ctt-quick-status[data-status="few"],
+.wp-core-ui select.ctt-quick-status[data-status="moved"] {
+	border-color: #e6d58c;
+	background-color: #fcf9e8;
+	color: #6b5200;
+}
+
+.wp-core-ui select.ctt-quick-status[data-status="extra"],
+.wp-core-ui select.ctt-quick-status[data-status="free"] {
+	border-color: #9fd8ab;
+	background-color: #edfaef;
+	color: #00631d;
+}
+
+.wp-core-ui select.ctt-quick-status[data-status="private"] {
+	border-color: #c3c4c7;
+	background-color: #f0f0f1;
+	color: #1d2327;
+}
+
+/* Schnelleinstellungen: Ticket-Link */
+
+.ctt-quick-ticket {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ctt-quick-ticket__link {
+	font-weight: 600;
+}
+
+.ctt-quick-ticket__edit {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	min-height: 28px;
+	margin: 0;
+	padding: 0 6px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: none;
+	color: #646970;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.ctt-quick-ticket__edit .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.ctt-quick-ticket__edit--add {
+	padding: 0 10px 0 6px;
+	border: 1px dashed #a7aaad;
+	border-radius: 999px;
+	color: #50575e;
+}
+
+.ctt-quick-ticket__edit:hover,
+.ctt-quick-ticket__edit:focus-visible,
+.ctt-quick-ticket__edit[aria-expanded="true"] {
+	border-color: #2271b1;
+	color: #2271b1;
+	outline: none;
+}
+
+.ctt-quick-ticket__edit:focus-visible {
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.ctt-quick-pop {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	z-index: 30;
+	box-sizing: border-box;
+	width: 340px;
+	max-width: 80vw;
+	padding: 14px;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+	text-align: left;
+}
+
+.ctt-quick-pop label {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+}
+
+.ctt-quick-pop input[type="text"] {
+	width: 100%;
+	max-width: none;
+	margin: 0;
+}
+
+.ctt-quick-pop__help {
+	margin: 6px 0 0;
+	color: #646970;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.ctt-quick-pop__help--error {
+	color: #b32d2e;
+}
+
+.ctt-quick-pop__actions {
+	display: flex;
+	gap: 8px;
+	margin-top: 12px;
 }
 
 .ctt-admin-date {
@@ -140,8 +469,14 @@
 
 /* Schmale Bildschirme: WordPress legt sonst das Spaltenlabel über das Datum vor der Hauptspalte. */
 @media screen and (max-width: 782px) {
-	.post-type-clesk_termin .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-ctt_date::before {
+	.post-type-clesk_termin .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-ctt_date::before,
+	.post-type-clesk_termin .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-ctt_image::before {
 		content: none;
+	}
+
+	.ctt-quick-pop {
+		right: auto;
+		left: 0;
 	}
 }
 

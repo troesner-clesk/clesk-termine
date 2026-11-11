@@ -15,6 +15,11 @@ final class Clesk_Termine_Admin {
 	const DUPLICATE_ACTION = 'clesk_termin_duplicate';
 
 	/**
+	 * Schnelleinstellungen in der Terminliste (Bild, Status, Ticket-Link).
+	 */
+	const QUICK_ACTION = 'clesk_termin_quick';
+
+	/**
 	 * Eigener Bereich für die Termindetails: direkt unter dem Titel, über der Beschreibung.
 	 */
 	const BOX_CONTEXT = 'ctt_after_title';
@@ -43,6 +48,7 @@ final class Clesk_Termine_Admin {
 		add_filter( 'post_row_actions', array( __CLASS__, 'row_actions' ), 10, 2 );
 		add_action( 'admin_action_' . self::DUPLICATE_ACTION, array( __CLASS__, 'duplicate' ) );
 		add_action( 'post_submitbox_misc_actions', array( __CLASS__, 'submitbox_duplicate' ) );
+		add_action( 'wp_ajax_' . self::QUICK_ACTION, array( __CLASS__, 'ajax_quick' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'notices' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 	}
@@ -86,8 +92,18 @@ final class Clesk_Termine_Admin {
 	public static function render_meta_box( $post ) {
 		$f    = Clesk_Termine_Events::get_fields( $post->ID );
 		$past = '' !== $f['date'] && $f['date'] < Clesk_Termine_Events::today();
-		// Die optionalen Angaben bleiben eingeklappt, solange keine davon gefüllt ist.
-		$more_open = '' !== $f['note'] || '' !== $f['street'] || '' !== $f['zip'] || '' !== $f['info_url'];
+		// Die optionalen Angaben sind eingeklappt. Welche davon gefüllt sind, nennt die Zeile selbst.
+		$extras = self::extra_labels();
+		$filled = array();
+		if ( '' !== $f['note'] ) {
+			$filled[] = $extras['note'];
+		}
+		if ( '' !== $f['street'] || '' !== $f['zip'] ) {
+			$filled[] = $extras['address'];
+		}
+		if ( '' !== $f['info_url'] ) {
+			$filled[] = $extras['info'];
+		}
 
 		wp_nonce_field( 'ctt_save_' . $post->ID, 'ctt_nonce' );
 		?>
@@ -128,8 +144,8 @@ final class Clesk_Termine_Admin {
 				</p>
 			</div>
 
-			<details class="ctt-admin__more"<?php echo $more_open ? ' open' : ''; ?>>
-				<summary><?php esc_html_e( 'Weitere Angaben (optional): Hinweis, Anschrift, Link „Mehr Infos“', 'clesk-termine' ); ?></summary>
+			<details class="ctt-admin__more">
+				<summary><?php esc_html_e( 'Weitere Angaben (optional): Hinweis, Anschrift, Link „Mehr Infos“', 'clesk-termine' ); ?> <span class="ctt-admin__filled" id="ctt-more-filled"><?php echo esc_html( $filled ? $extras['prefix'] . ' ' . implode( ', ', $filled ) : '' ); ?></span></summary>
 				<div class="ctt-admin__grid">
 					<p class="ctt-admin__field ctt-admin__field--wide">
 						<label for="ctt-note"><?php esc_html_e( 'Hinweis', 'clesk-termine' ); ?></label>
@@ -159,6 +175,20 @@ final class Clesk_Termine_Admin {
 			<datalist id="ctt-programs"><?php self::datalist_options( Clesk_Termine_Events::distinct_titles() ); ?></datalist>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Bezeichnungen der optionalen Angaben für den Hinweis „Ausgefüllt: …“ (Formular und Skript).
+	 *
+	 * @return array<string,string>
+	 */
+	private static function extra_labels() {
+		return array(
+			'prefix'  => __( 'Ausgefüllt:', 'clesk-termine' ),
+			'note'    => __( 'Hinweis', 'clesk-termine' ),
+			'address' => __( 'Anschrift', 'clesk-termine' ),
+			'info'    => __( 'Link „Mehr Infos“', 'clesk-termine' ),
+		);
 	}
 
 	/**
@@ -251,6 +281,7 @@ final class Clesk_Termine_Admin {
 	public static function columns( $columns ) {
 		return array(
 			'cb'         => isset( $columns['cb'] ) ? $columns['cb'] : '<input type="checkbox" />',
+			'ctt_image'  => __( 'Bild', 'clesk-termine' ),
 			'ctt_date'   => __( 'Datum', 'clesk-termine' ),
 			'title'      => __( 'Programm', 'clesk-termine' ),
 			'ctt_city'   => __( 'Stadt', 'clesk-termine' ),
@@ -267,47 +298,226 @@ final class Clesk_Termine_Admin {
 	 * @param int    $post_id Beitrags-ID.
 	 */
 	public static function column_content( $column, $post_id ) {
-		$f = Clesk_Termine_Events::get_fields( $post_id );
+		echo self::cell_html( $column, (int) $post_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- in cell_html() maskiert.
+	}
+
+	/**
+	 * Darf der Benutzer diesen Termin direkt in der Liste ändern?
+	 *
+	 * @param int $post_id Beitrags-ID.
+	 * @return bool
+	 */
+	private static function can_quick_edit( $post_id ) {
+		return 'trash' !== get_post_status( $post_id ) && current_user_can( 'edit_post', $post_id );
+	}
+
+	/**
+	 * Inhalt einer Zelle der Terminliste. Bild, Status und Ticket-Link lassen sich direkt in der Liste ändern.
+	 *
+	 * @param string $column  Spalte.
+	 * @param int    $post_id Beitrags-ID.
+	 * @return string
+	 */
+	private static function cell_html( $column, $post_id ) {
+		$f     = Clesk_Termine_Events::get_fields( $post_id );
+		$dash  = '<span aria-hidden="true">–</span>';
+		$title = trim( (string) get_post_field( 'post_title', $post_id ) );
+		$name  = '' !== $title ? $title : __( 'Termin ohne Titel', 'clesk-termine' );
 
 		switch ( $column ) {
+			case 'ctt_image':
+				return self::image_cell( $post_id, $name );
+
 			case 'ctt_date':
 				$start = Clesk_Termine_Events::start( $f['date'], $f['time'] );
 				if ( ! $start ) {
-					echo '<span class="ctt-admin-missing">' . esc_html__( 'Kein Datum', 'clesk-termine' ) . '</span>';
-					break;
+					return '<span class="ctt-admin-missing">' . esc_html__( 'Kein Datum', 'clesk-termine' ) . '</span>';
 				}
 				$past = $f['date'] < Clesk_Termine_Events::today();
-				$ts = $start->getTimestamp();
-				echo '<span class="' . ( $past ? 'ctt-admin-past' : 'ctt-admin-date' ) . '">' . esc_html( rtrim( wp_date( 'D', $ts ), '.' ) . ', ' . wp_date( 'd.m.Y', $ts ) );
+				$ts   = $start->getTimestamp();
+				$html = '<span class="' . ( $past ? 'ctt-admin-past' : 'ctt-admin-date' ) . '">' . esc_html( rtrim( wp_date( 'D', $ts ), '.' ) . ', ' . wp_date( 'd.m.Y', $ts ) );
 				if ( '' !== $f['time'] ) {
-					echo '<br><span class="ctt-admin-time">' . esc_html( $f['time'] ) . ' ' . esc_html__( 'Uhr', 'clesk-termine' ) . '</span>';
+					$html .= '<br><span class="ctt-admin-time">' . esc_html( $f['time'] ) . ' ' . esc_html__( 'Uhr', 'clesk-termine' ) . '</span>';
 				}
-				echo '</span>';
-				break;
+				return $html . '</span>';
 
 			case 'ctt_city':
-				echo '' !== $f['city'] ? esc_html( $f['city'] ) : '<span aria-hidden="true">–</span>';
-				break;
+				return '' !== $f['city'] ? esc_html( $f['city'] ) : $dash;
 
 			case 'ctt_venue':
-				echo '' !== $f['venue'] ? esc_html( $f['venue'] ) : '<span aria-hidden="true">–</span>';
-				break;
+				return '' !== $f['venue'] ? esc_html( $f['venue'] ) : $dash;
 
 			case 'ctt_status':
-				$label = Clesk_Termine_Events::status_label( $f['status'] );
-				echo '' !== $label
-					? '<span class="ctt-admin-badge ctt-admin-badge--' . esc_attr( $f['status'] ) . '">' . esc_html( $label ) . '</span>'
-					: '<span aria-hidden="true">–</span>';
-				break;
+				return self::status_cell( $post_id, $f['status'], $name );
 
 			case 'ctt_ticket':
-				if ( '' !== $f['ticket_url'] ) {
-					echo '<a href="' . esc_url( $f['ticket_url'] ) . '" target="_blank" rel="noopener">' . esc_html__( 'Link', 'clesk-termine' ) . '<span class="screen-reader-text"> ' . esc_html__( '(öffnet neues Fenster)', 'clesk-termine' ) . '</span></a>';
-				} else {
-					echo '<span aria-hidden="true">–</span>';
-				}
-				break;
+				return self::ticket_cell( $post_id, $f['ticket_url'], $name );
 		}
+		return '';
+	}
+
+	/**
+	 * Zelle „Bild“: Vorschau, ein Klick öffnet die Mediathek zum Wählen oder Tauschen.
+	 *
+	 * @param int    $post_id Beitrags-ID.
+	 * @param string $name    Programm (für die Beschriftung).
+	 * @return string
+	 */
+	private static function image_cell( $post_id, $name ) {
+		$image_id = (int) get_post_thumbnail_id( $post_id );
+		$img      = $image_id ? (string) wp_get_attachment_image(
+			$image_id,
+			'medium',
+			false,
+			array(
+				'class'   => 'ctt-quick-image__img',
+				'alt'     => '',
+				'loading' => 'lazy',
+			)
+		) : '';
+
+		if ( ! self::can_quick_edit( $post_id ) ) {
+			return '' !== $img ? '<span class="ctt-quick-image ctt-quick-image--static">' . $img . '</span>' : '<span aria-hidden="true">–</span>';
+		}
+
+		$label = '' !== $img
+			/* translators: %s: Programm. */
+			? sprintf( __( 'Bild von „%s“ tauschen', 'clesk-termine' ), $name )
+			/* translators: %s: Programm. */
+			: sprintf( __( 'Bild für „%s“ wählen', 'clesk-termine' ), $name );
+
+		$html = '<div class="ctt-quick-image' . ( '' === $img ? ' ctt-quick-image--empty' : '' ) . '">'
+			. '<button type="button" class="ctt-quick-image__pick" data-ctt-quick="image" data-post="' . (int) $post_id . '" data-image="' . (int) $image_id . '" aria-label="' . esc_attr( $label ) . '">';
+		if ( '' !== $img ) {
+			$html .= $img . '<span class="ctt-quick-image__hint" aria-hidden="true">' . esc_html__( 'Tauschen', 'clesk-termine' ) . '</span>';
+		} else {
+			$html .= '<span class="dashicons dashicons-format-image" aria-hidden="true"></span><span class="ctt-quick-image__add" aria-hidden="true">' . esc_html__( 'Bild wählen', 'clesk-termine' ) . '</span>';
+		}
+		$html .= '</button>';
+
+		if ( '' !== $img ) {
+			/* translators: %s: Programm. */
+			$remove = sprintf( __( 'Bild von „%s“ entfernen', 'clesk-termine' ), $name );
+			$html  .= '<button type="button" class="ctt-quick-image__remove" data-ctt-quick="image-remove" data-post="' . (int) $post_id . '" aria-label="' . esc_attr( $remove ) . '" title="' . esc_attr__( 'Bild entfernen', 'clesk-termine' ) . '">'
+				. '<span class="dashicons dashicons-no-alt" aria-hidden="true"></span></button>';
+		}
+		return $html . '</div>';
+	}
+
+	/**
+	 * Zelle „Status“: Auswahl, die sofort speichert.
+	 *
+	 * @param int    $post_id Beitrags-ID.
+	 * @param string $status  Gespeicherter Status.
+	 * @param string $name    Programm (für die Beschriftung).
+	 * @return string
+	 */
+	private static function status_cell( $post_id, $status, $name ) {
+		if ( ! self::can_quick_edit( $post_id ) ) {
+			$label = Clesk_Termine_Events::status_label( $status );
+			return '' !== $label
+				? '<span class="ctt-admin-badge ctt-admin-badge--' . esc_attr( $status ) . '">' . esc_html( $label ) . '</span>'
+				: '<span aria-hidden="true">–</span>';
+		}
+
+		// Ohne name-Attribut: Die Liste steht in einem Formular, das beim Filtern abgeschickt wird.
+		/* translators: %s: Programm. */
+		$html = '<select class="ctt-quick-status" data-ctt-quick="status" data-post="' . (int) $post_id . '" data-status="' . esc_attr( $status ) . '" aria-label="' . esc_attr( sprintf( __( 'Status von „%s“', 'clesk-termine' ), $name ) ) . '">';
+		foreach ( Clesk_Termine_Events::statuses() as $value => $label ) {
+			$html .= '<option value="' . esc_attr( $value ) . '"' . selected( $status, $value, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		return $html . '</select>';
+	}
+
+	/**
+	 * Zelle „Tickets“: Link zum Öffnen, daneben Bearbeiten oder Hinzufügen.
+	 *
+	 * @param int    $post_id Beitrags-ID.
+	 * @param string $url     Gespeicherter Ticket-Link.
+	 * @param string $name    Programm (für die Beschriftung).
+	 * @return string
+	 */
+	private static function ticket_cell( $post_id, $url, $name ) {
+		// Relative Links („/seite/“) gelten für die Website, nicht für das Backend.
+		$href = Clesk_Termine_Events::absolute_url( $url );
+		$link = '' !== $url
+			? '<a class="ctt-quick-ticket__link" href="' . esc_url( '' !== $href ? $href : $url ) . '" target="_blank" rel="noopener">' . esc_html__( 'Link', 'clesk-termine' ) . '<span class="screen-reader-text"> ' . esc_html__( '(öffnet neues Fenster)', 'clesk-termine' ) . '</span></a>'
+			: '';
+		if ( ! self::can_quick_edit( $post_id ) ) {
+			return '' !== $link ? $link : '<span aria-hidden="true">–</span>';
+		}
+
+		$label = '' !== $url
+			/* translators: %s: Programm. */
+			? sprintf( __( 'Ticket-Link von „%s“ ändern', 'clesk-termine' ), $name )
+			/* translators: %s: Programm. */
+			: sprintf( __( 'Ticket-Link für „%s“ eintragen', 'clesk-termine' ), $name );
+
+		return '<div class="ctt-quick-ticket">' . $link
+			. '<button type="button" class="ctt-quick-ticket__edit' . ( '' === $url ? ' ctt-quick-ticket__edit--add' : '' ) . '" data-ctt-quick="ticket" data-post="' . (int) $post_id . '" data-value="' . esc_attr( $url ) . '" aria-label="' . esc_attr( $label ) . '" aria-expanded="false">'
+			. ( '' === $url
+				? '<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span><span aria-hidden="true">' . esc_html__( 'Link', 'clesk-termine' ) . '</span>'
+				: '<span class="dashicons dashicons-edit" aria-hidden="true"></span>' )
+			. '</button></div>';
+	}
+
+	/**
+	 * Schnelleinstellung aus der Terminliste speichern (Bild, Status oder Ticket-Link).
+	 */
+	public static function ajax_quick() {
+		check_ajax_referer( self::QUICK_ACTION, 'nonce' );
+
+		$post_id = isset( $_POST['post'] ) ? absint( $_POST['post'] ) : 0;
+		$field   = isset( $_POST['field'] ) ? sanitize_key( wp_unslash( $_POST['field'] ) ) : '';
+		$value   = isset( $_POST['value'] ) && is_scalar( $_POST['value'] ) ? trim( (string) wp_unslash( $_POST['value'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- je Feld bereinigt.
+		$post    = get_post( $post_id );
+
+		if ( ! $post || Clesk_Termine_Events::POST_TYPE !== $post->post_type || 'trash' === $post->post_status ) {
+			wp_send_json_error( array( 'message' => __( 'Termin nicht gefunden.', 'clesk-termine' ) ), 404 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Keine Berechtigung, diesen Termin zu ändern.', 'clesk-termine' ) ), 403 );
+		}
+
+		switch ( $field ) {
+			case 'image':
+				$image_id = absint( $value );
+				if ( $image_id && ! wp_attachment_is_image( $image_id ) ) {
+					wp_send_json_error( array( 'message' => __( 'Die gewählte Datei ist kein Bild.', 'clesk-termine' ) ), 400 );
+				}
+				if ( $image_id ) {
+					set_post_thumbnail( $post_id, $image_id );
+				} else {
+					delete_post_thumbnail( $post_id );
+				}
+				$column = 'ctt_image';
+				break;
+
+			case 'status':
+				if ( ! array_key_exists( $value, Clesk_Termine_Events::statuses() ) ) {
+					wp_send_json_error( array( 'message' => __( 'Unbekannter Status.', 'clesk-termine' ) ), 400 );
+				}
+				update_post_meta( $post_id, Clesk_Termine_Events::FIELDS['status'], wp_slash( $value ) );
+				$column = 'ctt_status';
+				break;
+
+			case 'ticket_url':
+				if ( '' !== $value && '' === Clesk_Termine_Events::sanitize_url( $value ) ) {
+					wp_send_json_error( array( 'message' => __( 'Bitte eine vollständige Adresse eintragen, z. B. https://www.eventbrite.de/…', 'clesk-termine' ) ), 400 );
+				}
+				// Bereinigt wird über den sanitize_callback aus register_post_meta().
+				update_post_meta( $post_id, Clesk_Termine_Events::FIELDS['ticket_url'], wp_slash( $value ) );
+				$column = 'ctt_ticket';
+				break;
+
+			default:
+				wp_send_json_error( array( 'message' => __( 'Dieses Feld lässt sich hier nicht ändern.', 'clesk-termine' ) ), 400 );
+		}
+
+		// Änderungsdatum nachziehen: So bemerken Zwischenspeicher und Sitemap die Änderung.
+		wp_update_post( array( 'ID' => $post_id ) );
+
+		wp_send_json_success( array( 'html' => self::cell_html( $column, $post_id ) ) );
 	}
 
 	/**
@@ -752,6 +962,32 @@ final class Clesk_Termine_Admin {
 		}
 		wp_enqueue_style( 'clesk-termine-admin', CLESK_TERMINE_URL . 'assets/admin.css', array(), CLESK_TERMINE_VERSION );
 
+		if ( 'edit.php' === $hook ) {
+			// Mediathek für „Bild wählen“ direkt in der Liste.
+			wp_enqueue_media();
+			wp_enqueue_script( 'clesk-termine-admin-list', CLESK_TERMINE_URL . 'assets/admin-list.js', array( 'wp-a11y' ), CLESK_TERMINE_VERSION, true );
+			wp_add_inline_script(
+				'clesk-termine-admin-list',
+				'window.cttList = ' . wp_json_encode(
+					array(
+						'action' => self::QUICK_ACTION,
+						'nonce'  => wp_create_nonce( self::QUICK_ACTION ),
+						'text'   => array(
+							'saved'       => __( 'Gespeichert', 'clesk-termine' ),
+							'failed'      => __( 'Nicht gespeichert. Bitte noch einmal versuchen.', 'clesk-termine' ),
+							'imageTitle'  => __( 'Bild für den Termin', 'clesk-termine' ),
+							'imageButton' => __( 'Bild übernehmen', 'clesk-termine' ),
+							'ticketLabel' => __( 'Ticket-Link', 'clesk-termine' ),
+							'ticketHelp'  => __( 'Adresse der Ticketseite. Leer lassen, wenn es keinen Vorverkauf gibt.', 'clesk-termine' ),
+							'save'        => __( 'Speichern', 'clesk-termine' ),
+							'cancel'      => __( 'Abbrechen', 'clesk-termine' ),
+						),
+					)
+				) . ';',
+				'before'
+			);
+		}
+
 		if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
 			wp_enqueue_script( 'clesk-termine-admin', CLESK_TERMINE_URL . 'assets/admin.js', array(), CLESK_TERMINE_VERSION, true );
 			wp_add_inline_script(
@@ -759,6 +995,7 @@ final class Clesk_Termine_Admin {
 				'window.cttAdmin = ' . wp_json_encode(
 					array(
 						'venuePlaces' => (object) Clesk_Termine_Events::venue_places(),
+						'extras'      => self::extra_labels(),
 						'isCopy'      => ! empty( $_GET['ctt_kopie'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nur Anzeige.
 					)
 				) . ';',

@@ -412,9 +412,10 @@ final class Clesk_Termine_Render {
 			);
 		}
 
-		$inner = $img;
+		// Ohne Bild steht ein Ticketsymbol in der Bildfläche.
+		$inner = '' !== $img ? $img : self::icon( 'ticket', 'ctt-event__placeholder' );
 		if ( $a['linkDetails'] && '' !== $e['url'] && '' !== $e['title'] ) {
-			$inner = '<a class="ctt-event__media-link" href="' . esc_url( $e['url'] ) . '" tabindex="-1" aria-hidden="true">' . $img . '</a>';
+			$inner = '<a class="ctt-event__media-link" href="' . esc_url( $e['url'] ) . '" tabindex="-1" aria-hidden="true">' . $inner . '</a>';
 		}
 		return '<div class="ctt-event__media' . ( '' === $img ? ' ctt-event__media--empty' : '' ) . '">' . $inner . '</div>';
 	}

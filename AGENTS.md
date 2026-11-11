@@ -17,6 +17,8 @@ WordPress-Plugin, Einstieg und Datenmodell in [README.md](README.md). Das Reposi
 - `.ctt` ist ein Query-Container und meldet deshalb keine Eigenbreite. Die Hülle `.ctt-wrap` gleicht das über ein `::before` mit großer Wunschbreite aus; ohne sie fällt die Liste in Flex-Layouts zusammen.
 - Die Layouts für mittlere und schmale Breiten stehen doppelt in `style.css`: als `@container`-Regeln und gespiegelt im Block `@supports not (container-type: inline-size)`. Beide Stellen zusammen ändern.
 - Sammeladressen der Termine (`/?post_type=clesk_termin`, auch als Feed) leiten bewusst zur Übersicht um, Termine haben kein Archiv.
+- Schnelleinstellungen der Terminliste (`assets/admin-list.js`, `Clesk_Termine_Admin::ajax_quick()`): Die Liste steht in einem Formular, das beim Filtern und bei Mehrfachaktionen per GET abgeschickt wird. Bedienelemente in den Zeilen deshalb ohne `name`-Attribut, und die Eingabetaste im Ticket-Feld abfangen. Zellen kommen für Erstausgabe und Antwort aus derselben Funktion (`cell_html()`), neue Felder dort und in der Feldliste von `ajax_quick()` ergänzen.
+- Der Abschnitt „Weitere Angaben“ im Formular ist immer eingeklappt (Wunsch aus der Praxis). Damit dort nichts Veraltetes übersehen wird, nennt seine Zeile die gefüllten Angaben; `admin.js` hält den Hinweis aktuell, auch wenn das Formular die Anschrift selbst ergänzt oder leert.
 
 ## Prüfen
 
