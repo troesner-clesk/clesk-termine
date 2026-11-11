@@ -106,6 +106,8 @@ final class Clesk_Termine_Single {
 		add_action( 'loop_end', array( __CLASS__, 'loop_end' ) );
 		add_filter( 'has_post_thumbnail', array( __CLASS__, 'hide_theme_thumbnail' ), 10, 2 );
 		add_filter( 'post_thumbnail_html', array( __CLASS__, 'hide_theme_thumbnail_html' ), 10, 2 );
+		// GP Premium (Blog-Modul) gäbe den Rahmen des Beitragsbilds sonst leer aus, mit Abstand über dem Termin.
+		add_filter( 'generate_single_featured_image_output', '__return_empty_string' );
 
 		// GeneratePress: keine Seitenleiste, die Überschrift kommt aus dem Terminkopf (siehe print_title()).
 		if ( function_exists( 'generate_get_layout' ) ) {
