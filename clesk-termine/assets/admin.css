@@ -1,0 +1,178 @@
+/* Termine: Eingabeformular und Terminliste im Backend. */
+
+.ctt-admin__grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px 24px;
+	margin: 6px 0 4px;
+}
+
+.ctt-admin__field {
+	margin: 0;
+}
+
+.ctt-admin__field--wide {
+	grid-column: 1 / -1;
+}
+
+.ctt-admin__field label {
+	display: block;
+	margin-bottom: 4px;
+	font-weight: 600;
+}
+
+.ctt-admin__field input,
+.ctt-admin__field select {
+	width: 100%;
+	max-width: none;
+}
+
+.ctt-admin__required {
+	color: #b32d2e;
+}
+
+.ctt-admin__help {
+	display: block;
+	margin-top: 4px;
+	color: #646970;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.ctt-admin__help--warn {
+	color: #b32d2e;
+}
+
+.ctt-admin [hidden] {
+	display: none;
+}
+
+.ctt-admin__more {
+	margin: 18px 0 0;
+	padding: 10px 12px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.ctt-admin__more > summary {
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.ctt-admin__more[open] > summary {
+	margin-bottom: 12px;
+}
+
+.ctt-admin__tip {
+	margin: 18px 0 2px;
+	padding: 10px 12px;
+	border-left: 4px solid #72aee6;
+	background: #f6f7f7;
+}
+
+.ctt-admin.is-copy #ctt-date,
+.ctt-admin.is-copy #ctt-city,
+.ctt-admin.is-copy #ctt-venue,
+.ctt-admin.is-copy #ctt-street,
+.ctt-admin.is-copy #ctt-zip,
+.ctt-admin.is-copy #ctt-ticket {
+	border-color: #dba617;
+	box-shadow: 0 0 0 1px #dba617;
+}
+
+.ctt-admin-duplicate .dashicons {
+	color: #8c8f94;
+}
+
+@media (max-width: 782px) {
+	.ctt-admin__grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Termindetails stehen direkt unter dem Titel, darunter die Beschreibung. */
+
+#ctt_after_title-sortables {
+	margin-top: 20px;
+}
+
+#ctt_after_title-sortables .postbox {
+	margin-bottom: 0;
+}
+
+.ctt-admin-description {
+	margin: 24px 0 8px;
+}
+
+.ctt-admin-description h2 {
+	margin: 0 0 4px;
+	padding: 0;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+/* Terminliste */
+
+.post-type-clesk_termin .wp-list-table .column-ctt_date {
+	width: 150px;
+}
+
+.post-type-clesk_termin .wp-list-table .column-ctt_status {
+	width: 160px;
+}
+
+.post-type-clesk_termin .wp-list-table .column-ctt_ticket {
+	width: 80px;
+}
+
+.ctt-admin-date {
+	font-weight: 600;
+}
+
+.ctt-admin-time {
+	color: #646970;
+	font-weight: 400;
+}
+
+.ctt-admin-past {
+	color: #646970;
+}
+
+/* Schmale Bildschirme: WordPress legt sonst das Spaltenlabel über das Datum vor der Hauptspalte. */
+@media screen and (max-width: 782px) {
+	.post-type-clesk_termin .wp-list-table tr:not(.inline-edit-row):not(.no-items) td.column-ctt_date::before {
+		content: none;
+	}
+}
+
+.ctt-admin-missing {
+	color: #b32d2e;
+}
+
+.ctt-admin-badge {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 4px;
+	background: #f0f0f1;
+	color: #1d2327;
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.ctt-admin-badge--soldout,
+.ctt-admin-badge--cancelled {
+	background: #fcf0f1;
+	color: #8a2424;
+}
+
+.ctt-admin-badge--few,
+.ctt-admin-badge--moved {
+	background: #fcf9e8;
+	color: #6b5200;
+}
+
+.ctt-admin-badge--extra,
+.ctt-admin-badge--free {
+	background: #edfaef;
+	color: #00631d;
+}

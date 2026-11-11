@@ -1,0 +1,1505 @@
+/*
+ * Block „Termine“: drei Designs (Karten, Liste, Tickets).
+ * Farben übernehmen die globalen Farben von GeneratePress (--accent, --accent-3, --contrast …),
+ * mit Rückfallwerten für andere Themes.
+ */
+
+.ctt {
+	--ctt-accent: var(--accent, #006a4b);
+	--ctt-accent-dark: #00553c;
+	--ctt-on-accent: #fff;
+	--ctt-highlight: var(--accent-3, #f8b12d);
+	--ctt-text: var(--contrast, #222);
+	--ctt-muted: #5f5f6b;
+	--ctt-line: #e2e3e8;
+	--ctt-bg: var(--base-3, #fff);
+	--ctt-soft: var(--base-2, #f7f8f9);
+	--ctt-danger: #c0262d;
+	--ctt-radius: 10px;
+	container: ctt / inline-size;
+	color: var(--ctt-text);
+	/* Sprungziel für „Alle Termine“: Platz für feststehende Kopfzeilen lassen. */
+	scroll-margin-top: 90px;
+}
+
+/*
+ * Hülle um die Liste. Als Query-Container meldet .ctt dem umgebenden Layout keine Eigenbreite
+ * und würde in Flex-Layouts (Karten, Zeilen, Stapel) zusammenfallen. Die Hülle meldet deshalb
+ * eine große Wunschbreite bei Mindestbreite null: Sie füllt den verfügbaren Platz wie ein
+ * Textabsatz und erzwingt nie einen Überlauf.
+ */
+.ctt-wrap {
+	margin-block-end: 2em;
+}
+
+.ctt-wrap::before {
+	/* Zwei unsichtbare Zeichen mit einem Leerzeichen dazwischen. Sechsstellige Escapes, weil CSS ein Leerzeichen direkt nach einem kurzen Escape verschluckt. */
+	content: "\00200B\000020\00200B";
+	display: block;
+	height: 0;
+	overflow: hidden;
+	font-size: 0;
+	line-height: 0;
+	white-space: normal;
+	word-spacing: 100vw;
+	pointer-events: none;
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+	.ctt {
+		--ctt-accent-dark: color-mix(in srgb, var(--ctt-accent) 84%, #000);
+	}
+}
+
+.ctt,
+.ctt *,
+.ctt *::before,
+.ctt *::after {
+	box-sizing: border-box;
+}
+
+.ctt [hidden] {
+	display: none !important;
+}
+
+.ctt p {
+	margin: 0;
+}
+
+.ctt .ctt-sr,
+.ctt .ctt-count:empty {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+.ctt .ctt-svg {
+	display: block;
+	flex: none;
+	width: 20px;
+	height: 20px;
+}
+
+.ctt a:focus-visible,
+.ctt button:focus-visible,
+.ctt select:focus-visible {
+	outline: 3px solid var(--ctt-text);
+	outline-offset: 2px;
+}
+
+/* Filter ------------------------------------------------------------- */
+
+.ctt .ctt-filters {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	margin: 0 0 32px;
+}
+
+.ctt .ctt-filter {
+	position: relative;
+	flex: 0 1 230px;
+	min-width: 0;
+}
+
+.ctt .ctt-filter__icon {
+	position: absolute;
+	top: 50%;
+	left: 14px;
+	width: 18px;
+	height: 18px;
+	color: var(--ctt-on-accent);
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.ctt .ctt-filter select {
+	-webkit-appearance: none;
+	appearance: none;
+	display: block;
+	width: 100%;
+	max-width: none;
+	height: auto;
+	min-height: 46px;
+	margin: 0;
+	padding: 11px 38px 11px 42px;
+	overflow: hidden;
+	border: 2px solid var(--ctt-accent);
+	border-radius: var(--ctt-radius);
+	background-color: var(--ctt-accent);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+	background-position: right 12px center;
+	background-repeat: no-repeat;
+	background-size: 16px;
+	box-shadow: none;
+	color: var(--ctt-on-accent);
+	font: inherit;
+	/* Ab 16px zoomt iOS beim Antippen nicht in die Seite. */
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: 0.03em;
+	text-overflow: ellipsis;
+	text-transform: uppercase;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ctt .ctt-filter select:hover {
+	background-color: var(--ctt-accent-dark);
+}
+
+.ctt .ctt-filter.is-active select {
+	border-color: var(--ctt-highlight);
+}
+
+.ctt .ctt-filter select option {
+	background: #fff;
+	color: #222;
+	font-weight: 400;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.ctt .ctt-filter select option:disabled {
+	color: #9a9aa3;
+}
+
+.ctt .ctt-reset,
+.ctt .ctt-reset:hover,
+.ctt .ctt-reset:focus {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin: 0;
+	padding: 10px 12px;
+	border: 0;
+	border-radius: var(--ctt-radius);
+	background: transparent;
+	box-shadow: none;
+	color: var(--ctt-text);
+	font: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.2;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+	cursor: pointer;
+}
+
+.ctt .ctt-reset .ctt-svg {
+	width: 16px;
+	height: 16px;
+}
+
+.ctt .ctt-count {
+	flex: 1 0 100%;
+	color: var(--ctt-muted);
+	font-size: 14px;
+	text-align: center;
+}
+
+/* Gruppen und gemeinsame Bausteine ------------------------------------ */
+
+.ctt .ctt-group + .ctt-group {
+	margin-top: 40px;
+}
+
+.ctt .ctt-group__title {
+	margin: 0 0 14px;
+	padding: 0;
+	color: var(--ctt-text);
+	font-size: 28px;
+	font-weight: 800;
+	line-height: 1.15;
+	letter-spacing: 0.01em;
+	text-transform: uppercase;
+}
+
+.ctt .ctt-list {
+	display: grid;
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ctt .ctt-item {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.ctt .ctt-event {
+	position: relative;
+	color: var(--ctt-text);
+}
+
+.ctt .ctt-event__title {
+	font-weight: 600;
+}
+
+.ctt .ctt-event__note {
+	margin-top: 4px;
+	color: var(--ctt-accent);
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.ctt .ctt-event--moved .ctt-event__note,
+.ctt .ctt-event--cancelled .ctt-event__note {
+	color: var(--ctt-danger);
+}
+
+.ctt .ctt-sep {
+	color: var(--ctt-muted);
+}
+
+.ctt .ctt-event__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 8px 10px;
+}
+
+.ctt .ctt-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border: 1px solid var(--ctt-line);
+	border-radius: 50%;
+	background: var(--ctt-bg);
+	color: var(--ctt-muted);
+	text-decoration: none;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.ctt .ctt-icon:hover,
+.ctt .ctt-icon:focus-visible {
+	border-color: var(--ctt-accent);
+	color: var(--ctt-accent);
+}
+
+.ctt .ctt-ticket {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 40px;
+	padding: 9px 18px 9px 14px;
+	border: 2px solid var(--ctt-accent);
+	border-radius: 999px;
+	background: var(--ctt-accent);
+	color: var(--ctt-on-accent);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.1;
+	text-decoration: none;
+	white-space: nowrap;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.ctt .ctt-ticket:hover,
+.ctt .ctt-ticket:focus-visible {
+	border-color: var(--ctt-accent-dark);
+	background: var(--ctt-accent-dark);
+	color: var(--ctt-on-accent);
+}
+
+.ctt .ctt-badge {
+	display: inline-block;
+	padding: 5px 9px;
+	border-radius: 6px;
+	background: #ececf0;
+	color: #33333b;
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	max-width: 100%;
+}
+
+.ctt .ctt-badge--soldout {
+	background: var(--ctt-danger);
+	color: #fff;
+}
+
+.ctt .ctt-badge--cancelled {
+	background: #3f3f46;
+	color: #fff;
+}
+
+.ctt .ctt-badge--few,
+.ctt .ctt-badge--moved {
+	background: var(--ctt-highlight);
+	color: #1f1f1f;
+}
+
+.ctt .ctt-badge--extra {
+	background: var(--ctt-accent);
+	color: var(--ctt-on-accent);
+}
+
+.ctt .ctt-badge--free {
+	background: #e3f0eb;
+	color: var(--ctt-accent);
+}
+
+/* Abgesagt: gedämpfte, aber gut lesbare Farben. Nur das Bild wird abgeblendet. */
+.ctt .ctt-event--cancelled .ctt-event__date,
+.ctt .ctt-event--cancelled .ctt-event__city,
+.ctt .ctt-event--cancelled .ctt-event__venue,
+.ctt .ctt-event--cancelled .ctt-event__title,
+.ctt .ctt-event--cancelled .ctt-event__place {
+	color: var(--ctt-muted);
+}
+
+.ctt .ctt-event--cancelled .ctt-event__media {
+	opacity: 0.5;
+}
+
+.ctt .ctt-event--cancelled .ctt-event__title {
+	text-decoration: line-through;
+}
+
+.ctt .ctt-empty {
+	padding: 28px 20px;
+	border: 1px dashed #c9cad2;
+	border-radius: var(--ctt-radius);
+	color: var(--ctt-muted);
+	text-align: center;
+}
+
+.ctt .ctt-empty--filter {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	margin-top: 8px;
+}
+
+.ctt .ctt-editor-hint {
+	margin-top: 10px;
+	color: var(--ctt-muted);
+	font-size: 13px;
+	text-align: center;
+}
+
+/* Links zur Terminseite und Buttons ---------------------------------------- */
+
+.ctt .ctt-event__link,
+.ctt .ctt-event__link:visited {
+	color: inherit;
+	text-decoration: none;
+}
+
+.ctt .ctt-event__link:hover,
+.ctt .ctt-event__link:focus-visible {
+	color: inherit;
+	text-decoration: underline;
+	text-decoration-thickness: 2px;
+	text-underline-offset: 3px;
+}
+
+.ctt .ctt-btn,
+.ctt .ctt-btn:visited {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 40px;
+	margin: 0;
+	padding: 8px 16px;
+	border: 1px solid #c9cad2;
+	border-radius: 999px;
+	background: var(--ctt-bg);
+	box-shadow: none;
+	color: var(--ctt-text);
+	font: inherit;
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.2;
+	text-decoration: none;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.ctt .ctt-btn:hover,
+.ctt .ctt-btn:focus,
+.ctt .ctt-btn.is-done {
+	border-color: var(--ctt-accent);
+	background: var(--ctt-bg);
+	color: var(--ctt-accent);
+}
+
+.ctt .ctt-btn .ctt-svg {
+	width: 18px;
+	height: 18px;
+}
+
+/* Design 1: Karten ------------------------------------------------------ */
+
+.ctt--karten .ctt-list {
+	gap: 14px;
+}
+
+.ctt--karten .ctt-event {
+	display: grid;
+	grid-template-areas: "visual main actions";
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	min-height: 104px;
+	overflow: hidden;
+	border: 1px solid var(--ctt-line);
+	border-radius: 14px;
+	background: var(--ctt-bg);
+	transition: border-color 0.15s ease;
+}
+
+.ctt--karten .ctt-event:hover {
+	border-color: var(--ctt-accent);
+}
+
+/* Mit Bildern bekommt jede Karte links eine Bildfläche, auf der das Kalenderblatt sitzt. */
+.ctt--karten .ctt-groups--media .ctt-event {
+	grid-template-columns: 208px minmax(0, 1fr) auto;
+	min-height: 140px;
+}
+
+/* Kalenderblatt: Monat im Balken, großer Tag, Wochentag. Leicht gedreht, wie angepinnt. */
+.ctt--karten .ctt-event__date {
+	grid-area: visual;
+	z-index: 1;
+	align-self: center;
+	justify-self: start;
+	width: 64px;
+	margin: 16px 2px 16px 18px;
+	overflow: hidden;
+	border-radius: 9px;
+	background: #fff;
+	box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 3px 8px rgba(0, 0, 0, 0.14);
+	line-height: 1;
+	text-align: center;
+	transform: rotate(-3deg);
+}
+
+.ctt--karten .ctt-groups--media .ctt-event__date {
+	align-self: start;
+	margin: 12px;
+}
+
+.ctt--karten .ctt-date__monthname {
+	display: block;
+	padding: 6px 2px 5px;
+	background: var(--ctt-accent);
+	color: var(--ctt-on-accent);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	white-space: nowrap;
+}
+
+.ctt--karten .ctt-date__day {
+	display: block;
+	padding: 7px 0 1px;
+	color: #222;
+	font-size: 27px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+}
+
+.ctt--karten .ctt-date__weekday {
+	display: block;
+	padding: 0 0 7px;
+	color: #5f5f6b;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.ctt--karten .ctt-event__media {
+	position: relative;
+	grid-area: visual;
+	align-self: stretch;
+	min-height: 140px;
+	background: #e9efec;
+}
+
+.ctt--karten .ctt-event__media img {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	object-fit: cover;
+}
+
+.ctt--karten .ctt-event__main {
+	grid-area: main;
+	padding: 16px 22px;
+}
+
+.ctt--karten .ctt-event__city {
+	font-size: 22px;
+	font-weight: 800;
+	line-height: 1.2;
+}
+
+.ctt--karten .ctt-event__title {
+	margin-top: 2px;
+	font-size: 17px;
+	font-weight: 500;
+	line-height: 1.35;
+}
+
+.ctt--karten .ctt-event__venue {
+	color: var(--ctt-muted);
+	font-size: 16px;
+	line-height: 1.35;
+}
+
+.ctt--karten .ctt-event__actions {
+	grid-area: actions;
+	padding: 16px 22px 16px 0;
+}
+
+.ctt--karten .ctt-event--cancelled .ctt-date__monthname {
+	background: #6b6b75;
+}
+
+.ctt--karten .ctt-event--cancelled .ctt-date__day {
+	color: var(--ctt-muted);
+}
+
+/* Design 2: Liste ------------------------------------------------------- */
+
+.ctt--liste .ctt-group__title {
+	margin-bottom: 0;
+	padding-bottom: 10px;
+	border-bottom: 2px solid var(--ctt-text);
+	font-size: 22px;
+}
+
+.ctt--liste .ctt-group > .ctt-list:first-child {
+	border-top: 2px solid var(--ctt-text);
+}
+
+.ctt--liste .ctt-list {
+	gap: 0;
+}
+
+.ctt--liste .ctt-item {
+	border-bottom: 1px solid var(--ctt-line);
+}
+
+.ctt--liste .ctt-event {
+	display: grid;
+	grid-template-areas: "date main actions";
+	grid-template-columns: 116px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 4px 24px;
+	padding: 16px 8px;
+	transition: background-color 0.15s ease;
+}
+
+/* Ohne Monatsgruppen steht das Jahr im Datum, die Spalte braucht mehr Platz. */
+.ctt--liste.ctt--full-dates .ctt-event {
+	grid-template-columns: 150px minmax(0, 1fr) auto;
+}
+
+.ctt--liste .ctt-event:hover {
+	background: var(--ctt-soft);
+}
+
+.ctt--liste .ctt-event__date {
+	grid-area: date;
+	line-height: 1.3;
+}
+
+.ctt--liste .ctt-date__main {
+	display: block;
+	font-size: 17px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.ctt--liste .ctt-date__meta {
+	display: block;
+	color: var(--ctt-muted);
+	font-size: 14px;
+}
+
+.ctt--liste .ctt-event__main {
+	grid-area: main;
+	line-height: 1.35;
+}
+
+.ctt--liste .ctt-event__place {
+	font-size: 17px;
+}
+
+.ctt--liste .ctt-event__city {
+	font-weight: 800;
+}
+
+.ctt--liste .ctt-event__title {
+	color: var(--ctt-muted);
+	font-size: 15px;
+	font-weight: 400;
+}
+
+.ctt--liste .ctt-event__actions {
+	grid-area: actions;
+}
+
+.ctt--liste .ctt-icon {
+	width: 36px;
+	height: 36px;
+	border-color: transparent;
+	background: transparent;
+}
+
+.ctt--liste .ctt-ticket {
+	padding: 7px 16px 7px 12px;
+	background: transparent;
+	color: var(--ctt-accent);
+}
+
+.ctt--liste .ctt-ticket:hover,
+.ctt--liste .ctt-ticket:focus-visible {
+	border-color: var(--ctt-accent);
+	background: var(--ctt-accent);
+	color: var(--ctt-on-accent);
+}
+
+/* Design 3: Tickets ----------------------------------------------------- */
+
+.ctt--ticket .ctt-list {
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+	gap: 20px;
+}
+
+/* Der große Titel ist hier selbst der Link zur Terminseite, das zusätzliche Info-Symbol entfällt. */
+.ctt--ticket .ctt-icon--info[aria-hidden="true"] {
+	display: none;
+}
+
+.ctt--ticket .ctt-item {
+	filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.06)) drop-shadow(0 8px 16px rgba(0, 0, 0, 0.07));
+}
+
+.ctt--ticket .ctt-event {
+	--ctt-stub: 96px;
+	--ctt-notch: 11px;
+	display: grid;
+	grid-template-areas: "date main" "date actions";
+	grid-template-columns: var(--ctt-stub) minmax(0, 1fr);
+	grid-template-rows: 1fr auto;
+	height: 100%;
+	min-height: 168px;
+	border-radius: 14px;
+	background: var(--ctt-bg);
+	-webkit-mask:
+		radial-gradient(circle var(--ctt-notch) at var(--ctt-stub) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+		radial-gradient(circle var(--ctt-notch) at var(--ctt-stub) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+	mask:
+		radial-gradient(circle var(--ctt-notch) at var(--ctt-stub) 0, #0000 98%, #000) top / 100% 51% no-repeat,
+		radial-gradient(circle var(--ctt-notch) at var(--ctt-stub) 100%, #0000 98%, #000) bottom / 100% 51% no-repeat;
+}
+
+.ctt--ticket .ctt-event__date {
+	display: flex;
+	grid-area: date;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 18px 8px;
+	border-right: 2px dashed rgba(255, 255, 255, 0.55);
+	background: var(--ctt-accent);
+	color: var(--ctt-on-accent);
+	line-height: 1;
+	text-align: center;
+}
+
+.ctt--ticket .ctt-date__weekday {
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	opacity: 0.85;
+}
+
+.ctt--ticket .ctt-date__day {
+	margin: 6px 0 4px;
+	font-size: 44px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+}
+
+.ctt--ticket .ctt-date__monthname {
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+.ctt--ticket .ctt-date__year {
+	margin-top: 4px;
+	font-size: 13px;
+	font-weight: 600;
+	opacity: 0.85;
+}
+
+.ctt--ticket .ctt-date__meta {
+	margin-top: 12px;
+	padding-top: 9px;
+	border-top: 1px solid rgba(255, 255, 255, 0.4);
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.ctt--ticket .ctt-event__main {
+	grid-area: main;
+	padding: 20px 22px 8px 24px;
+}
+
+.ctt--ticket .ctt-event__title {
+	font-size: 21px;
+	font-weight: 800;
+	line-height: 1.2;
+}
+
+.ctt--ticket .ctt-event__place {
+	margin-top: 6px;
+	color: var(--ctt-muted);
+	font-size: 16px;
+	line-height: 1.4;
+}
+
+.ctt--ticket .ctt-event__city {
+	color: var(--ctt-text);
+	font-weight: 700;
+}
+
+.ctt--ticket .ctt-event__status {
+	margin-top: 10px;
+}
+
+.ctt--ticket .ctt-event__actions {
+	grid-area: actions;
+	justify-content: flex-start;
+	padding: 8px 22px 20px 24px;
+}
+
+.ctt--ticket .ctt-ticket {
+	margin-left: auto;
+	border-color: var(--ctt-highlight);
+	background: var(--ctt-highlight);
+	color: #1f1f1f;
+}
+
+.ctt--ticket .ctt-ticket:hover,
+.ctt--ticket .ctt-ticket:focus-visible {
+	border-color: var(--ctt-text);
+	background: var(--ctt-text);
+	color: #fff;
+}
+
+.ctt--ticket .ctt-event--cancelled .ctt-event__date {
+	background: #6b6b75;
+	color: #fff;
+}
+
+.ctt--ticket .ctt-event--cancelled .ctt-event__date > * {
+	opacity: 1;
+}
+
+/* Terminseite -------------------------------------------------------------- */
+
+.ctt-wrap--single {
+	max-width: 920px;
+	margin-inline: auto;
+}
+
+.ctt .ctt-single__head {
+	display: grid;
+	grid-template-columns: 136px minmax(0, 1fr);
+	overflow: hidden;
+	border: 1px solid var(--ctt-line);
+	border-radius: 14px;
+	background: var(--ctt-bg);
+	box-shadow: 0 3px 10px 5px rgba(0, 0, 0, 0.05);
+}
+
+.ctt .ctt-single__date {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 28px 10px;
+	background: var(--ctt-accent);
+	color: var(--ctt-on-accent);
+	line-height: 1;
+	text-align: center;
+}
+
+.ctt .ctt-single__date .ctt-date__weekday {
+	font-size: 14px;
+	font-weight: 700;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	opacity: 0.85;
+}
+
+.ctt .ctt-single__date .ctt-date__day {
+	margin: 8px 0 6px;
+	font-size: 60px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+}
+
+.ctt .ctt-single__date .ctt-date__monthname {
+	font-size: 15px;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.ctt .ctt-single__date .ctt-date__meta {
+	margin-top: 14px;
+	padding-top: 11px;
+	border-top: 1px solid rgba(255, 255, 255, 0.4);
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.ctt .ctt-single__main {
+	padding: 28px 32px;
+}
+
+.ctt .ctt-single__title {
+	margin: 0 0 12px;
+	padding: 0;
+	color: var(--ctt-text);
+	font-size: 36px;
+	font-size: clamp(27px, 5cqi, 44px);
+	font-weight: 800;
+	line-height: 1.1;
+	letter-spacing: 0;
+	text-transform: none;
+	overflow-wrap: anywhere;
+}
+
+.ctt .ctt-single__when {
+	font-size: 19px;
+	font-weight: 700;
+	line-height: 1.35;
+}
+
+.ctt .ctt-single__where {
+	margin-top: 6px;
+	font-size: 17px;
+	line-height: 1.45;
+}
+
+.ctt .ctt-single__venue {
+	display: block;
+	font-weight: 700;
+}
+
+.ctt .ctt-single__address {
+	display: block;
+	color: var(--ctt-muted);
+}
+
+.ctt .ctt-single__status {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	margin-top: 14px;
+}
+
+.ctt .ctt-single__note {
+	color: var(--ctt-accent);
+	font-size: 15px;
+	font-weight: 700;
+}
+
+.ctt-single--moved .ctt-single__note,
+.ctt-single--cancelled .ctt-single__note {
+	color: var(--ctt-danger);
+}
+
+.ctt .ctt-single__hint {
+	margin-top: 14px;
+	color: var(--ctt-muted);
+	font-size: 15px;
+}
+
+.ctt .ctt-single__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	margin-top: 22px;
+}
+
+.ctt .ctt-ticket--large {
+	min-height: 48px;
+	padding: 12px 24px 12px 18px;
+	font-size: 17px;
+}
+
+.ctt-single--cancelled .ctt-single__date {
+	background: #6b6b75;
+}
+
+.ctt-single--cancelled .ctt-single__date > * {
+	opacity: 1;
+}
+
+/* Ohne Datum gibt es kein Datumsfeld, der Kopf nutzt die volle Breite. */
+.ctt-single--undated .ctt-single__head {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.ctt-single--cancelled .ctt-single__title {
+	text-decoration: line-through;
+}
+
+.ctt .ctt-single__body {
+	margin-top: 32px;
+}
+
+.ctt .ctt-single__body--split {
+	display: grid;
+	grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+	align-items: start;
+	gap: 32px;
+}
+
+.ctt .ctt-single__media {
+	margin: 0;
+}
+
+.ctt .ctt-single__body:not(.ctt-single__body--split) .ctt-single__media {
+	max-width: 560px;
+}
+
+.ctt .ctt-single__img {
+	display: block;
+	width: 100%;
+	height: auto;
+	border-radius: var(--ctt-radius);
+}
+
+.ctt .ctt-single__text {
+	font-size: 17px;
+	line-height: 1.6;
+}
+
+.ctt .ctt-single__text p {
+	margin: 0 0 1em;
+}
+
+.ctt .ctt-single__text > :last-child {
+	margin-bottom: 0;
+}
+
+.ctt .ctt-share,
+.ctt .ctt-single__more {
+	margin-top: 40px;
+	padding-top: 28px;
+	border-top: 1px solid var(--ctt-line);
+}
+
+.ctt .ctt-share {
+	scroll-margin-top: 90px;
+}
+
+.ctt .ctt-share__title,
+.ctt .ctt-single__more-title {
+	margin: 0 0 16px;
+	padding: 0;
+	color: var(--ctt-text);
+	font-size: 22px;
+	font-weight: 800;
+	line-height: 1.2;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.ctt .ctt-share__links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.ctt .ctt-single__more .ctt-wrap {
+	margin-block-end: 0;
+}
+
+.ctt .ctt-single__back {
+	margin-top: 40px;
+}
+
+/* GeneratePress, Seitenlayout „Volle Breite“: Direkt im Inhalt platziert hält die Ausgabe selbst Breite und Randabstand. */
+
+.full-width-content .entry-content > .ctt-wrap:not(.alignfull) {
+	box-sizing: border-box;
+	max-width: var(--gb-container-width, 1200px);
+	margin-inline: auto;
+	padding-inline: 40px;
+}
+
+.full-width-content .entry-content > .ctt-wrap--single:not(.alignfull) {
+	max-width: 1000px;
+}
+
+@media (max-width: 767px) {
+	.full-width-content .entry-content > .ctt-wrap:not(.alignfull) {
+		padding-inline: 30px;
+	}
+}
+
+/* Schmale Container --------------------------------------------------- */
+
+/* Mittlere Breite (Tablet hochkant, 200 % Zoom): Aktionen unter den Text, damit er nicht zusammengedrückt wird. */
+@container ctt (min-width: 620.02px) and (max-width: 900px) {
+	.ctt--karten .ctt-event {
+		grid-template-areas: "visual main" "visual actions";
+		grid-template-columns: auto minmax(0, 1fr);
+		grid-template-rows: 1fr auto;
+	}
+
+	.ctt--karten .ctt-groups--media .ctt-event {
+		grid-template-columns: 176px minmax(0, 1fr);
+	}
+
+	.ctt--karten .ctt-event__main {
+		align-self: end;
+		padding-bottom: 6px;
+	}
+
+	.ctt--karten .ctt-event__actions {
+		align-self: start;
+		justify-content: flex-start;
+		padding: 4px 22px 16px;
+	}
+
+	.ctt--liste .ctt-event {
+		grid-template-areas: "date main" "date actions";
+		grid-template-columns: 116px minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.ctt--liste.ctt--full-dates .ctt-event {
+		grid-template-columns: 150px minmax(0, 1fr);
+	}
+
+	.ctt--liste .ctt-event__actions {
+		justify-content: flex-start;
+		margin-top: 4px;
+	}
+
+	.ctt--liste .ctt-event__actions > .ctt-icon:first-child {
+		margin-left: -9px;
+	}
+}
+
+@container ctt (max-width: 620px) {
+	.ctt .ctt-filter {
+		flex: 1 1 100%;
+	}
+
+	.ctt .ctt-group__title {
+		font-size: 22px;
+	}
+
+	/* Ohne Bilder: Kalenderblatt links, Text rechts. */
+	.ctt--karten .ctt-event {
+		grid-template-areas: "visual main" "visual actions";
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.ctt--karten .ctt-event__date {
+		align-self: start;
+		width: 58px;
+		margin: 14px 0 14px 14px;
+	}
+
+	.ctt--karten .ctt-event__main {
+		padding: 14px 14px 6px;
+	}
+
+	.ctt--karten .ctt-event__actions {
+		justify-content: flex-start;
+		padding: 2px 14px 14px;
+	}
+
+	.ctt--karten .ctt-event__city {
+		font-size: 20px;
+	}
+
+	.ctt--karten .ctt-event__title,
+	.ctt--karten .ctt-event__venue {
+		font-size: 16px;
+	}
+
+	/* Mit Bildern: Bild oben, Kalenderblatt darauf, Text darunter. */
+	.ctt--karten .ctt-groups--media .ctt-event {
+		grid-template-areas: "visual" "main" "actions";
+		grid-template-columns: minmax(0, 1fr);
+		min-height: 0;
+	}
+
+	.ctt--karten .ctt-groups--media .ctt-event__date {
+		margin: 12px;
+	}
+
+	.ctt--karten .ctt-groups--media .ctt-event__media {
+		min-height: 0;
+		aspect-ratio: 16 / 9;
+	}
+
+	.ctt--karten .ctt-groups--media .ctt-event__media--empty {
+		min-height: 98px;
+		aspect-ratio: auto;
+	}
+
+	.ctt--karten .ctt-groups--media .ctt-event__main {
+		padding: 14px 16px 6px;
+	}
+
+	.ctt--karten .ctt-groups--media .ctt-event__actions {
+		padding: 2px 16px 16px;
+	}
+
+	.ctt--liste .ctt-event,
+	.ctt--liste.ctt--full-dates .ctt-event {
+		grid-template-areas: "date" "main" "actions";
+		grid-template-columns: minmax(0, 1fr);
+		gap: 4px;
+		padding: 14px 4px;
+	}
+
+	.ctt--liste .ctt-event__actions {
+		justify-content: flex-start;
+		margin-top: 6px;
+	}
+
+	.ctt--liste .ctt-event__actions > .ctt-icon:first-child {
+		margin-left: -9px;
+	}
+
+	.ctt--liste .ctt-date__main,
+	.ctt--liste .ctt-date__meta {
+		display: inline;
+		white-space: nowrap;
+	}
+
+	.ctt--liste .ctt-date__meta::before {
+		content: " · ";
+	}
+}
+
+@container ctt (max-width: 620px) {
+	.ctt .ctt-single__head {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.ctt .ctt-single__date {
+		flex-direction: row;
+		align-items: baseline;
+		justify-content: flex-start;
+		gap: 10px;
+		padding: 14px 20px;
+	}
+
+	.ctt .ctt-single__date .ctt-date__day {
+		margin: 0;
+		font-size: 30px;
+	}
+
+	.ctt .ctt-single__date .ctt-date__meta {
+		margin: 0 0 0 auto;
+		padding: 0;
+		border: 0;
+	}
+
+	.ctt .ctt-single__main {
+		padding: 20px;
+	}
+
+	.ctt .ctt-single__body--split {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 24px;
+	}
+
+	.ctt .ctt-single__actions .ctt-ticket--large {
+		flex: 1 0 100%;
+		justify-content: center;
+	}
+}
+
+@container ctt (max-width: 400px) {
+	.ctt--ticket .ctt-event {
+		--ctt-stub: 80px;
+	}
+
+	.ctt--ticket .ctt-date__day {
+		font-size: 36px;
+	}
+
+	.ctt--ticket .ctt-event__main {
+		padding: 16px 16px 6px 18px;
+	}
+
+	.ctt--ticket .ctt-event__actions {
+		gap: 8px;
+		padding: 6px 16px 16px 18px;
+	}
+
+	.ctt--ticket .ctt-icon {
+		width: 36px;
+		height: 36px;
+	}
+
+	.ctt--ticket .ctt-ticket {
+		padding: 8px 14px 8px 11px;
+	}
+}
+
+/*
+ * Rückfall für Browser ohne Container Queries (z. B. iOS 15 und älter).
+ * Spiegelt die Regeln der @container-Blöcke oben per Media Query.
+ * Bei Änderungen an den Layouts für mittlere und schmale Breiten beide Stellen anpassen.
+ */
+@supports not (container-type: inline-size) {
+	@media (min-width: 700.02px) and (max-width: 980px) {
+		.ctt--karten .ctt-event {
+			grid-template-areas: "visual main" "visual actions";
+			grid-template-columns: auto minmax(0, 1fr);
+			grid-template-rows: 1fr auto;
+		}
+
+		.ctt--karten .ctt-groups--media .ctt-event {
+			grid-template-columns: 176px minmax(0, 1fr);
+		}
+
+		.ctt--karten .ctt-event__main {
+			align-self: end;
+			padding-bottom: 6px;
+		}
+
+		.ctt--karten .ctt-event__actions {
+			align-self: start;
+			justify-content: flex-start;
+			padding: 4px 22px 16px;
+		}
+
+		.ctt--liste .ctt-event {
+			grid-template-areas: "date main" "date actions";
+			grid-template-columns: 116px minmax(0, 1fr);
+			align-items: start;
+		}
+
+		.ctt--liste.ctt--full-dates .ctt-event {
+			grid-template-columns: 150px minmax(0, 1fr);
+		}
+
+		.ctt--liste .ctt-event__actions {
+			justify-content: flex-start;
+			margin-top: 4px;
+		}
+
+		.ctt--liste .ctt-event__actions > .ctt-icon:first-child {
+			margin-left: -9px;
+		}
+	}
+
+	@media (max-width: 700px) {
+		.ctt .ctt-filter {
+			flex: 1 1 100%;
+		}
+
+		.ctt .ctt-group__title {
+			font-size: 22px;
+		}
+
+		/* Ohne Bilder: Kalenderblatt links, Text rechts. */
+		.ctt--karten .ctt-event {
+			grid-template-areas: "visual main" "visual actions";
+			grid-template-columns: auto minmax(0, 1fr);
+			align-items: start;
+		}
+
+		.ctt--karten .ctt-event__date {
+			align-self: start;
+			width: 58px;
+			margin: 14px 0 14px 14px;
+		}
+
+		.ctt--karten .ctt-event__main {
+			padding: 14px 14px 6px;
+		}
+
+		.ctt--karten .ctt-event__actions {
+			justify-content: flex-start;
+			padding: 2px 14px 14px;
+		}
+
+		.ctt--karten .ctt-event__city {
+			font-size: 20px;
+		}
+
+		.ctt--karten .ctt-event__title,
+		.ctt--karten .ctt-event__venue {
+			font-size: 16px;
+		}
+
+		/* Mit Bildern: Bild oben, Kalenderblatt darauf, Text darunter. */
+		.ctt--karten .ctt-groups--media .ctt-event {
+			grid-template-areas: "visual" "main" "actions";
+			grid-template-columns: minmax(0, 1fr);
+			min-height: 0;
+		}
+
+		.ctt--karten .ctt-groups--media .ctt-event__date {
+			margin: 12px;
+		}
+
+		.ctt--karten .ctt-groups--media .ctt-event__media {
+			min-height: 0;
+			aspect-ratio: 16 / 9;
+		}
+
+		.ctt--karten .ctt-groups--media .ctt-event__media--empty {
+			min-height: 98px;
+			aspect-ratio: auto;
+		}
+
+		.ctt--karten .ctt-groups--media .ctt-event__main {
+			padding: 14px 16px 6px;
+		}
+
+		.ctt--karten .ctt-groups--media .ctt-event__actions {
+			padding: 2px 16px 16px;
+		}
+
+		.ctt--liste .ctt-event,
+		.ctt--liste.ctt--full-dates .ctt-event {
+			grid-template-areas: "date" "main" "actions";
+			grid-template-columns: minmax(0, 1fr);
+			gap: 4px;
+			padding: 14px 4px;
+		}
+
+		.ctt--liste .ctt-event__actions {
+			justify-content: flex-start;
+			margin-top: 6px;
+		}
+
+		.ctt--liste .ctt-event__actions > .ctt-icon:first-child {
+			margin-left: -9px;
+		}
+
+		.ctt--liste .ctt-date__main,
+		.ctt--liste .ctt-date__meta {
+			display: inline;
+			white-space: nowrap;
+		}
+
+		.ctt--liste .ctt-date__meta::before {
+			content: " · ";
+		}
+
+		.ctt .ctt-single__head {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.ctt .ctt-single__date {
+			flex-direction: row;
+			align-items: baseline;
+			justify-content: flex-start;
+			gap: 10px;
+			padding: 14px 20px;
+		}
+
+		.ctt .ctt-single__date .ctt-date__day {
+			margin: 0;
+			font-size: 30px;
+		}
+
+		.ctt .ctt-single__date .ctt-date__meta {
+			margin: 0 0 0 auto;
+			padding: 0;
+			border: 0;
+		}
+
+		.ctt .ctt-single__main {
+			padding: 20px;
+		}
+
+		.ctt .ctt-single__body--split {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 24px;
+		}
+
+		.ctt .ctt-single__actions .ctt-ticket--large {
+			flex: 1 0 100%;
+			justify-content: center;
+		}
+	}
+
+	@media (max-width: 440px) {
+		.ctt--ticket .ctt-event {
+			--ctt-stub: 80px;
+		}
+
+		.ctt--ticket .ctt-date__day {
+			font-size: 36px;
+		}
+
+		.ctt--ticket .ctt-event__main {
+			padding: 16px 16px 6px 18px;
+		}
+
+		.ctt--ticket .ctt-event__actions {
+			gap: 8px;
+			padding: 6px 16px 16px 18px;
+		}
+
+		.ctt--ticket .ctt-icon {
+			width: 36px;
+			height: 36px;
+		}
+
+		.ctt--ticket .ctt-ticket {
+			padding: 8px 14px 8px 11px;
+		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ctt *,
+	.ctt *::before,
+	.ctt *::after {
+		transition: none !important;
+	}
+}

@@ -1,0 +1,80 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "clesk/termine",
+	"version": "1.0.0",
+	"title": "Termine",
+	"category": "widgets",
+	"icon": "tickets-alt",
+	"description": "Zeigt die Veranstaltungen aus dem Menü „Termine“ mit Ticket-Links, Links zu den Terminseiten und Filtern für Stadt, Location und Monat.",
+	"keywords": [ "termine", "tickets", "veranstaltungen", "tour", "events", "auftritte" ],
+	"textdomain": "clesk-termine",
+	"attributes": {
+		"design": {
+			"type": "string",
+			"enum": [ "karten", "liste", "ticket" ],
+			"default": "karten"
+		},
+		"filterCity": {
+			"type": "boolean",
+			"default": true
+		},
+		"filterVenue": {
+			"type": "boolean",
+			"default": true
+		},
+		"filterMonth": {
+			"type": "boolean",
+			"default": true
+		},
+		"groupByMonth": {
+			"type": "boolean",
+			"default": true
+		},
+		"showImages": {
+			"type": "boolean",
+			"default": true
+		},
+		"showMap": {
+			"type": "boolean",
+			"default": true
+		},
+		"linkDetails": {
+			"type": "boolean",
+			"default": true
+		},
+		"showShare": {
+			"type": "boolean",
+			"default": true
+		},
+		"range": {
+			"type": "string",
+			"enum": [ "upcoming", "past", "all" ],
+			"default": "upcoming"
+		},
+		"program": {
+			"type": "string",
+			"default": ""
+		},
+		"limit": {
+			"type": "integer",
+			"default": 0
+		},
+		"ticketLabel": {
+			"type": "string",
+			"default": "Tickets"
+		},
+		"emptyText": {
+			"type": "string",
+			"default": "Aktuell sind keine Termine geplant."
+		}
+	},
+	"supports": {
+		"html": false,
+		"anchor": true,
+		"align": [ "wide", "full" ]
+	},
+	"editorScript": "file:./index.js",
+	"style": "file:./style.css",
+	"viewScript": "file:./view.js"
+}
