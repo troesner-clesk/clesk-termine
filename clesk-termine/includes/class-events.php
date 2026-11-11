@@ -116,6 +116,7 @@ final class Clesk_Termine_Events {
 		flush_rewrite_rules( false );
 		delete_option( self::OPTION_REWRITE );
 		delete_transient( self::TRANSIENT_OVERVIEW );
+		wp_clear_scheduled_hook( Clesk_Termine_Single::DAILY_HOOK );
 	}
 
 	/**

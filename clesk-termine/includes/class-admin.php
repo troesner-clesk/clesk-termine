@@ -37,6 +37,7 @@ final class Clesk_Termine_Admin {
 		add_filter( 'post_updated_messages', array( __CLASS__, 'updated_messages' ) );
 
 		add_filter( 'manage_' . $pt . '_posts_columns', array( __CLASS__, 'columns' ) );
+		add_filter( 'default_hidden_columns', array( __CLASS__, 'default_hidden_columns' ), 10, 2 );
 		add_action( 'manage_' . $pt . '_posts_custom_column', array( __CLASS__, 'column_content' ), 10, 2 );
 		add_filter( 'manage_edit-' . $pt . '_sortable_columns', array( __CLASS__, 'sortable_columns' ) );
 		add_action( 'pre_get_posts', array( __CLASS__, 'list_query' ) );
@@ -289,6 +290,22 @@ final class Clesk_Termine_Admin {
 			'ctt_status' => __( 'Status', 'clesk-termine' ),
 			'ctt_ticket' => __( 'Tickets', 'clesk-termine' ),
 		);
+	}
+
+	/**
+	 * Spalten fremder Plugins, die in der Terminliste zunächst ausgeblendet sind. Über „Ansicht anpassen“
+	 * lassen sie sich einblenden. Die SEO-Leiste von The SEO Framework etwa wiederholt nur, was das Plugin
+	 * für Terminseiten ohnehin automatisch setzt, und macht die Liste schmal.
+	 *
+	 * @param string[]  $hidden Ausgeblendete Spalten.
+	 * @param WP_Screen $screen Bildschirm.
+	 * @return string[]
+	 */
+	public static function default_hidden_columns( $hidden, $screen ) {
+		if ( $screen instanceof WP_Screen && 'edit-' . Clesk_Termine_Events::POST_TYPE === $screen->id ) {
+			$hidden[] = 'tsf-seo-bar-wrap';
+		}
+		return $hidden;
 	}
 
 	/**

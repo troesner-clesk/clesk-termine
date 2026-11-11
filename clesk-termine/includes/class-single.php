@@ -15,6 +15,11 @@ defined( 'ABSPATH' ) || exit;
 final class Clesk_Termine_Single {
 
 	/**
+	 * Täglicher Lauf kurz nach Mitternacht: Sitemaps ohne die Termine vom Vortag.
+	 */
+	const DAILY_HOOK = 'clesk_termine_daily';
+
+	/**
 	 * Gibt die Terminseite die Überschrift selbst aus (statt des Themes)? null = noch nicht entschieden.
 	 *
 	 * @var bool|null
@@ -68,6 +73,15 @@ final class Clesk_Termine_Single {
 		add_filter( 'wp_sitemaps_users_query_args', array( __CLASS__, 'sitemap_users_args' ) );
 		add_filter( 'oembed_response_data', array( __CLASS__, 'oembed_data' ), 10, 2 );
 		add_action( 'template_redirect', array( __CLASS__, 'redirect_collections' ) );
+
+		// The SEO Framework: Titel, Beschreibung und Robots der Terminseiten. Über die Robots-Angabe
+		// entscheidet The SEO Framework auch, welche Termine in seiner Sitemap stehen.
+		add_filter( 'the_seo_framework_title_from_generation', array( __CLASS__, 'tsf_title' ), 10, 2 );
+		add_filter( 'the_seo_framework_description_excerpt', array( __CLASS__, 'tsf_excerpt' ), 10, 2 );
+		add_filter( 'the_seo_framework_robots_meta_array', array( __CLASS__, 'tsf_robots' ), 10, 2 );
+
+		add_action( 'init', array( __CLASS__, 'schedule_daily' ) );
+		add_action( self::DAILY_HOOK, array( __CLASS__, 'daily' ) );
 	}
 
 	/**
@@ -303,7 +317,7 @@ final class Clesk_Termine_Single {
 	 */
 	private static function outputs_meta() {
 		$seo_plugin = defined( 'WPSEO_VERSION' ) || defined( 'RANK_MATH_VERSION' ) || defined( 'SEOPRESS_VERSION' )
-			|| defined( 'AIOSEO_VERSION' ) || defined( 'THE_SEO_FRAMEWORK_VERSION' ) || defined( 'SLIM_SEO_VER' );
+			|| defined( 'AIOSEO_VERSION' ) || defined( 'SLIM_SEO_VER' ) || self::tsf_handles_query();
 
 		/**
 		 * Seitentitel, Beschreibung und Vorschau-Daten (Open Graph) der Terminseiten ausgeben?
@@ -511,17 +525,154 @@ final class Clesk_Termine_Single {
 	 * @return array
 	 */
 	public static function robots( $robots ) {
-		if ( ! self::is_event_page() ) {
+		// Mit The SEO Framework kommt die Angabe aus tsf_robots(), sonst stünden zwei Robots-Tags im Seitenkopf.
+		if ( ! self::is_event_page() || self::tsf_handles_query() ) {
 			return $robots;
 		}
-		$e    = self::current_event();
 		$post = get_queried_object();
-		if ( ! $e || ! $e['has_date'] || $e['is_past'] || 'private' === $e['status'] || ( $post instanceof WP_Post && '' !== $post->post_password ) ) {
+		if ( ! $post instanceof WP_Post || self::is_noindex( $post ) ) {
 			$robots['noindex'] = true;
 			$robots['follow']  = true;
 			unset( $robots['max-image-preview'] );
 		}
 		return $robots;
+	}
+
+	/**
+	 * Gehört ein Termin nicht in den Suchindex? Vergangene, geschlossene, passwortgeschützte und undatierte Termine.
+	 *
+	 * @param WP_Post $post Termin.
+	 * @return bool
+	 */
+	private static function is_noindex( $post ) {
+		if ( '' !== (string) $post->post_password ) {
+			return true;
+		}
+		$e = Clesk_Termine_Events::prepare( $post, true );
+		return ! $e || ! $e['has_date'] || $e['is_past'] || 'private' === $e['status'];
+	}
+
+	/**
+	 * Gibt The SEO Framework die Kopfdaten der aufgerufenen Seite aus?
+	 *
+	 * @return bool
+	 */
+	private static function tsf_handles_query() {
+		if ( ! defined( 'THE_SEO_FRAMEWORK_VERSION' ) || ! function_exists( 'tsf' ) ) {
+			return false;
+		}
+		try {
+			return (bool) tsf()->query()->utils()->query_supports_seo();
+		} catch ( Throwable $e ) {
+			// Ältere oder geänderte Schnittstelle: The SEO Framework ist aktiv, also nicht doppelt ausgeben.
+			return true;
+		}
+	}
+
+	/**
+	 * Termin zu den Abfrage-Argumenten von The SEO Framework (null = aufgerufene Seite).
+	 *
+	 * @param array|null $args Argumente mit 'id', 'tax', 'pta' und 'uid'.
+	 * @return WP_Post|null
+	 */
+	private static function tsf_event( $args ) {
+		if ( ! Clesk_Termine_Events::has_single_pages() ) {
+			return null;
+		}
+		if ( null === $args ) {
+			$post = is_singular( Clesk_Termine_Events::POST_TYPE ) ? get_queried_object() : null;
+		} elseif ( is_array( $args ) && ! empty( $args['id'] ) && empty( $args['tax'] ) && empty( $args['taxonomy'] ) && empty( $args['pta'] ) && empty( $args['uid'] ) ) {
+			$post = get_post( (int) $args['id'] );
+		} else {
+			$post = null;
+		}
+		return ( $post instanceof WP_Post && Clesk_Termine_Events::POST_TYPE === $post->post_type ) ? $post : null;
+	}
+
+	/**
+	 * The SEO Framework: Titel aus Programm, Stadt und Datum statt nur dem Programm.
+	 * Ein Titel, den jemand im Termin von Hand einträgt, hat weiter Vorrang.
+	 *
+	 * @param string     $title Erzeugter Titel.
+	 * @param array|null $args  Abfrage-Argumente.
+	 * @return string
+	 */
+	public static function tsf_title( $title, $args = null ) {
+		$post = self::tsf_event( $args );
+		// Passwortgeschützt: Stadt und Datum bleiben verborgen.
+		if ( ! $post || '' !== (string) $post->post_password ) {
+			return $title;
+		}
+		return self::seo_title( Clesk_Termine_Events::prepare( $post, true ) );
+	}
+
+	/**
+	 * The SEO Framework: Grundlage der Beschreibung (Eckdaten, Status, Hinweis, Beschreibungstext).
+	 * The SEO Framework kürzt sie danach auf die passende Länge für Suche und Vorschauen.
+	 *
+	 * @param string     $excerpt Auszug aus dem Inhalt.
+	 * @param array|null $args    Abfrage-Argumente.
+	 * @return string
+	 */
+	public static function tsf_excerpt( $excerpt, $args = null ) {
+		$post = self::tsf_event( $args );
+		if ( ! $post || '' !== (string) $post->post_password ) {
+			return $excerpt;
+		}
+		return self::description( Clesk_Termine_Events::prepare( $post, true ), $post, 400 );
+	}
+
+	/**
+	 * The SEO Framework: Termine, die nicht in den Suchindex gehören, bekommen „noindex“.
+	 * Damit fallen sie auch aus der Sitemap von The SEO Framework.
+	 *
+	 * @param array      $meta Robots-Angaben.
+	 * @param array|null $args Abfrage-Argumente.
+	 * @return array
+	 */
+	public static function tsf_robots( $meta, $args = null ) {
+		$post = self::tsf_event( $args );
+		if ( $post && self::is_noindex( $post ) ) {
+			$meta            = (array) $meta;
+			$meta['noindex'] = 'noindex';
+		}
+		return $meta;
+	}
+
+	/**
+	 * Täglichen Lauf einplanen: kurz nach Mitternacht in der Zeitzone der Website.
+	 */
+	public static function schedule_daily() {
+		// Ein Tagesrhythmus verschiebt sich mit Sommer- und Winterzeit. Dann neu auf kurz nach Mitternacht legen.
+		$next = wp_next_scheduled( self::DAILY_HOOK );
+		if ( $next && '00' === wp_date( 'H', $next ) ) {
+			return;
+		}
+		if ( $next ) {
+			wp_clear_scheduled_hook( self::DAILY_HOOK );
+		}
+		try {
+			$next = new DateTimeImmutable( 'tomorrow 00:05', wp_timezone() );
+		} catch ( Exception $e ) {
+			return;
+		}
+		wp_schedule_event( $next->getTimestamp(), 'daily', self::DAILY_HOOK );
+	}
+
+	/**
+	 * Täglicher Lauf: The SEO Framework hält seine Sitemap bis zu einer Woche vor und erneuert sie nur,
+	 * wenn sich Inhalte ändern. Termine vom Vortag sollen aber schon am nächsten Tag herausfallen.
+	 * Die Sitemap von WordPress selbst wird bei jedem Abruf neu erzeugt und braucht das nicht.
+	 */
+	public static function daily() {
+		if ( ! function_exists( 'tsf' ) ) {
+			return;
+		}
+		try {
+			tsf()->sitemap()->cache()->clear_sitemap_caches();
+		} catch ( Throwable $e ) {
+			return;
+		}
 	}
 
 	/**
