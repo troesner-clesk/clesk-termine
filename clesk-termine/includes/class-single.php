@@ -407,6 +407,10 @@ final class Clesk_Termine_Single {
 		if ( '' !== $note ) {
 			$text .= ' ' . self::sentence( $note );
 		}
+		$price = self::price_phrase( $e );
+		if ( '' !== $price && ( '' === $note || false === stripos( $note, $price ) ) ) {
+			$text .= ' ' . self::sentence( $price );
+		}
 
 		$body = wp_strip_all_tags( strip_shortcodes( (string) $post->post_content ) );
 		// Nackte Adressen (z. B. eingebettete Videos) gehören nicht in die Beschreibung.
@@ -416,6 +420,26 @@ final class Clesk_Termine_Single {
 			$text .= ' ' . $body;
 		}
 		return self::truncate( $text, $length );
+	}
+
+	/**
+	 * Preis für die Beschreibung, z. B. „Tickets ab 18 €“ oder „Eintritt frei“. Leer bei vergangenen,
+	 * ausverkauften, abgesagten und geschlossenen Terminen.
+	 *
+	 * @param array $e Termin.
+	 * @return string
+	 */
+	private static function price_phrase( array $e ) {
+		if ( $e['is_past'] || in_array( $e['status'], Clesk_Termine_Events::NO_TICKET_STATUSES, true ) ) {
+			return '';
+		}
+		$price  = isset( $e['price'] ) ? (string) $e['price'] : '';
+		$amount = Clesk_Termine_Render::amount( $price );
+		if ( 'free' === $e['status'] || ( '' !== $amount && 0.0 === (float) $price ) ) {
+			return __( 'Eintritt frei', 'clesk-termine' );
+		}
+		/* translators: %s: Betrag, z. B. 18 oder 18,50. */
+		return '' !== $amount ? sprintf( __( 'Tickets ab %s €', 'clesk-termine' ), $amount ) : '';
 	}
 
 	/**
@@ -874,6 +898,7 @@ final class Clesk_Termine_Single {
 
 		$actions = '';
 		if ( $e['has_date'] ) {
+			$actions .= Clesk_Termine_Render::price_html( $e );
 			$actions .= Clesk_Termine_Render::ticket_html( $e, __( 'Tickets', 'clesk-termine' ), 'ctt-ticket ctt-ticket--large' );
 		}
 		$actions .= Clesk_Termine_Render::map_link_html( $e, 'ctt-btn', true );

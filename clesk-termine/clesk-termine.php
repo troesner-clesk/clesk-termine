@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Termine & Tickets
  * Plugin URI:        https://github.com/troesner-clesk/clesk-termine
- * Description:       Veranstaltungen mit Datum, Uhrzeit, Stadt, Location und Ticket-Link pflegen, mit dem Block „Termine“ samt Filtern (Stadt, Location, Monat) anzeigen und jedem Termin eine eigene Seite zum Teilen geben.
- * Version:           1.2.0
+ * Description:       Veranstaltungen mit Datum, Uhrzeit, Stadt, Location, Ticket-Link und Preis pflegen, mit dem Block „Termine“ samt Filtern (Stadt, Location, Monat) anzeigen und jedem Termin eine eigene Seite zum Teilen geben.
+ * Version:           1.3.0
  * Requires at least: 6.3
  * Requires PHP:      7.4
  * Author:            Clesk Digital GmbH
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'CLESK_TERMINE_VERSION', '1.2.0' );
+define( 'CLESK_TERMINE_VERSION', '1.3.0' );
 define( 'CLESK_TERMINE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'CLESK_TERMINE_URL', plugin_dir_url( __FILE__ ) );
 

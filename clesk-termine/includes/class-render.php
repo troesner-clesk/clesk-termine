@@ -460,9 +460,9 @@ final class Clesk_Termine_Render {
 			return $sr . $place . $title . $note;
 		}
 
-		// Tickets: Status unter den Texten, damit die Aktionszeile ruhig bleibt.
-		$badge = self::badge_html( $e );
-		return $sr . $title . $place . $note . ( '' !== $badge ? '<p class="ctt-event__status">' . $badge . '</p>' : '' );
+		// Tickets: Status und Preis unter den Texten, damit die Aktionszeile ruhig bleibt.
+		$status = self::badge_html( $e ) . self::price_html( $e );
+		return $sr . $title . $place . $note . ( '' !== $status ? '<p class="ctt-event__status">' . $status . '</p>' : '' );
 	}
 
 	/**
@@ -504,7 +504,70 @@ final class Clesk_Termine_Render {
 			$html .= self::map_link_html( $e, 'ctt-icon ctt-icon--map', false );
 		}
 
-		return $html . self::ticket_html( $e, $a['ticketLabel'] );
+		// Im Design „Tickets“ steht der Preis beim Status (main_html()). Sonst steht er vor dem Ticket-Button,
+		// beide bleiben beim Umbrechen zusammen.
+		$price  = 'ticket' === $a['design'] ? '' : self::price_html( $e );
+		$ticket = self::ticket_html( $e, $a['ticketLabel'] );
+		if ( '' !== $price && '' !== $ticket ) {
+			return $html . '<span class="ctt-buy">' . $price . $ticket . '</span>';
+		}
+		return $html . $price . $ticket;
+	}
+
+	/**
+	 * Betrag im Format der Website-Sprache, z. B. „18“ oder „18,50“. Leer ohne Preis.
+	 *
+	 * @param string $price Gespeicherter Preis (Dezimalzahl mit Punkt).
+	 * @return string
+	 */
+	public static function amount( $price ) {
+		$price = (string) $price;
+		if ( '' === $price || ! is_numeric( $price ) ) {
+			return '';
+		}
+		return number_format_i18n( (float) $price, false !== strpos( $price, '.' ) ? 2 : 0 );
+	}
+
+	/**
+	 * Preis zum Anzeigen: „ab 18 €“, „ab 18,50 €“, bei 0 „Eintritt frei“. Leer ohne Preis.
+	 *
+	 * @param string $price Gespeicherter Preis (Dezimalzahl mit Punkt).
+	 * @return string
+	 */
+	public static function price_text( $price ) {
+		$amount = self::amount( $price );
+		if ( '' === $amount ) {
+			return '';
+		}
+		if ( 0.0 === (float) $price ) {
+			return __( 'Eintritt frei', 'clesk-termine' );
+		}
+		// Geschützte Leerzeichen: „€“ rutscht nie allein in die nächste Zeile.
+		/* translators: %s: Betrag, z. B. 18 oder 18,50. */
+		return str_replace( ' ', "\xC2\xA0", sprintf( __( 'ab %s €', 'clesk-termine' ), $amount ) );
+	}
+
+	/**
+	 * Steht der Preis beim Termin? Nur bei kommenden Terminen, die man besuchen kann: nicht bei vergangenen,
+	 * ausverkauften, abgesagten und geschlossenen Terminen. Beim Status „Eintritt frei“ sagt das Badge schon alles.
+	 *
+	 * @param array $e Termin.
+	 * @return bool
+	 */
+	public static function shows_price( array $e ) {
+		return isset( $e['price'] ) && '' !== $e['price'] && ! empty( $e['has_date'] ) && ! $e['is_past']
+			&& 'free' !== $e['status'] && ! in_array( $e['status'], Clesk_Termine_Events::NO_TICKET_STATUSES, true );
+	}
+
+	/**
+	 * Preis als Text neben dem Ticket-Button (oder an dessen Stelle, wenn es keinen Vorverkauf gibt).
+	 *
+	 * @param array $e Termin.
+	 * @return string
+	 */
+	public static function price_html( array $e ) {
+		$text = self::shows_price( $e ) ? self::price_text( $e['price'] ) : '';
+		return '' !== $text ? '<span class="ctt-price">' . esc_html( $text ) . '</span>' : '';
 	}
 
 	/**
@@ -739,15 +802,43 @@ final class Clesk_Termine_Render {
 				$item['image'] = array( $image );
 			}
 		}
+		// Angebot mit Ticket-Link oder Preis. Ohne Ticket-Link verweist es auf die Terminseite (Abendkasse).
 		$ticket_url = Clesk_Termine_Events::absolute_url( $e['ticket_url'] );
-		if ( '' !== $ticket_url && 'cancelled' !== $e['status'] ) {
-			$item['offers'] = array(
-				'@type'        => 'Offer',
-				'url'          => $ticket_url,
-				'availability' => 'soldout' === $e['status'] ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
-			);
+		$price      = self::schema_price( $e );
+		if ( 'cancelled' !== $e['status'] && ( '' !== $ticket_url || '' !== $price ) ) {
+			$offer = array( '@type' => 'Offer' );
+			$url   = '' !== $ticket_url ? $ticket_url : $e['url'];
+			if ( '' !== $url ) {
+				$offer['url'] = $url;
+			}
+			if ( '' !== $price ) {
+				$offer['price']         = $price;
+				$offer['priceCurrency'] = 'EUR';
+			}
+			$offer['availability'] = 'soldout' === $e['status'] ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock';
+			$item['offers']        = $offer;
+		}
+		if ( '0' === $price ) {
+			$item['isAccessibleForFree'] = true;
 		}
 		return $item;
+	}
+
+	/**
+	 * Preis für die strukturierten Daten: der gespeicherte Preis, beim Status „Eintritt frei“ immer 0.
+	 *
+	 * @param array $e Termin.
+	 * @return string Dezimalzahl mit Punkt oder leer.
+	 */
+	private static function schema_price( array $e ) {
+		if ( 'free' === $e['status'] ) {
+			return '0';
+		}
+		$price = isset( $e['price'] ) ? (string) $e['price'] : '';
+		if ( '' === $price || ! is_numeric( $price ) || (float) $price < 0 ) {
+			return '';
+		}
+		return 0.0 === (float) $price ? '0' : $price;
 	}
 
 	/**

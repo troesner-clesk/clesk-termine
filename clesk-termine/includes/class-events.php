@@ -45,6 +45,7 @@ final class Clesk_Termine_Events {
 		'street'     => '_ctt_street',
 		'zip'        => '_ctt_zip',
 		'ticket_url' => '_ctt_ticket_url',
+		'price'      => '_ctt_price',
 		'status'     => '_ctt_status',
 		'note'       => '_ctt_note',
 		'info_url'   => '_ctt_info_url',
@@ -185,6 +186,7 @@ final class Clesk_Termine_Events {
 			'street'     => array( __CLASS__, 'sanitize_text' ),
 			'zip'        => array( __CLASS__, 'sanitize_zip' ),
 			'ticket_url' => array( __CLASS__, 'sanitize_url' ),
+			'price'      => array( __CLASS__, 'sanitize_price' ),
 			'status'     => array( __CLASS__, 'sanitize_status' ),
 			'note'       => array( __CLASS__, 'sanitize_text' ),
 			'info_url'   => array( __CLASS__, 'sanitize_url' ),
@@ -325,6 +327,48 @@ final class Clesk_Termine_Events {
 			$value = 'https://' . $value;
 		}
 		return esc_url_raw( $value, array( 'http', 'https' ) );
+	}
+
+	/**
+	 * Preis ab (Euro) als Dezimalzahl mit Punkt, z. B. „18“ oder „18.5“; „0“ heißt Eintritt frei.
+	 *
+	 * Tolerant für Eingaben wie „18,50“, „ab 18 €“, „18,-“, „1.200“ oder „frei“. Ein Trenner vor genau
+	 * drei Ziffern gilt als Tausendertrenner. Negative und unlesbare Werte ergeben leer, ebenso mehr als
+	 * zwei Nachkommastellen. admin.js prüft Eingaben im Formular nach denselben Regeln (parsePrice).
+	 *
+	 * @param mixed $value Eingabe.
+	 * @return string
+	 */
+	public static function sanitize_price( $value ) {
+		$value = trim( (string) $value );
+		$value = function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+		if ( '' === $value ) {
+			return '';
+		}
+		if ( in_array( $value, array( 'frei', 'eintritt frei', 'kostenlos', 'gratis', 'free' ), true ) ) {
+			return '0';
+		}
+		$value = (string) preg_replace( '/^ab/u', '', $value );
+		$value = str_replace( array( 'euro', 'eur', '€' ), '', $value );
+		$value = (string) preg_replace( '/[\s\x{00A0}\x{202F}]+/u', '', $value );
+		// „18,-“ und „18.–“ sind volle Euro.
+		$value = (string) preg_replace( '/[.,]?[-\x{2013}\x{2014}]+$/u', '', $value );
+		$value = rtrim( $value, '.,' );
+
+		if ( preg_match( '/^(\d{1,6})(?:[.,](\d{1,2}))?$/', $value, $m ) ) {
+			$int = $m[1];
+		} elseif ( preg_match( '/^(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/', $value, $m ) || preg_match( '/^(\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/', $value, $m ) ) {
+			$int = str_replace( array( '.', ',' ), '', $m[1] );
+		} else {
+			return '';
+		}
+		if ( strlen( $int ) > 6 ) {
+			return '';
+		}
+		$int = ltrim( $int, '0' );
+		$int = '' !== $int ? $int : '0';
+		$dec = isset( $m[2] ) ? rtrim( $m[2], '0' ) : '';
+		return '' !== $dec ? $int . '.' . $dec : $int;
 	}
 
 	/**

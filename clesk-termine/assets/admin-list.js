@@ -1,6 +1,6 @@
 /**
  * Terminliste: Schnelleinstellungen direkt in der Zeile. Bild wählen, tauschen oder entfernen,
- * Status umstellen, Ticket-Link eintragen. Jede Änderung wird sofort gespeichert.
+ * Status umstellen, Ticket-Link und Preis eintragen. Jede Änderung wird sofort gespeichert.
  */
 ( function () {
 	'use strict';
@@ -123,7 +123,27 @@
 		frame.open();
 	}
 
-	/* Ticket-Link ----------------------------------------------------------- */
+	/* Ticket-Link und Preis ------------------------------------------------- */
+
+	// Felder, die sich über ein kleines Eingabefeld unter dem Button ändern lassen.
+	var fields = {
+		ticket: {
+			field: 'ticket_url',
+			label: text.ticketLabel,
+			help: text.ticketHelp,
+			placeholder: 'https://',
+			inputMode: 'url',
+			focus: '.ctt-quick-ticket__edit',
+		},
+		price: {
+			field: 'price',
+			label: text.priceLabel,
+			help: text.priceHelp,
+			placeholder: text.pricePlaceholder || '',
+			inputMode: 'decimal',
+			focus: '.ctt-quick-price__edit',
+		},
+	};
 
 	var popover = null;
 
@@ -140,7 +160,7 @@
 		}
 	}
 
-	function openTicket( button ) {
+	function openField( button, options ) {
 		if ( popover && popover.button === button ) {
 			closePopover( true );
 			return;
@@ -149,30 +169,30 @@
 
 		var cell = button.closest( 'td' );
 		var postId = button.getAttribute( 'data-post' );
-		var id = 'ctt-quick-ticket-' + postId;
+		var id = 'ctt-quick-' + options.field + '-' + postId;
 
 		var box = document.createElement( 'div' );
 		box.className = 'ctt-quick-pop';
 		box.setAttribute( 'role', 'group' );
-		box.setAttribute( 'aria-label', text.ticketLabel );
+		box.setAttribute( 'aria-label', options.label );
 
 		var label = document.createElement( 'label' );
 		label.setAttribute( 'for', id );
-		label.textContent = text.ticketLabel;
+		label.textContent = options.label;
 
 		// Ohne name-Attribut: Das Feld gehört nicht zum Formular der Liste.
 		var input = document.createElement( 'input' );
 		input.type = 'text';
 		input.id = id;
-		input.inputMode = 'url';
+		input.inputMode = options.inputMode;
 		input.autocomplete = 'off';
 		input.spellcheck = false;
-		input.placeholder = 'https://';
+		input.placeholder = options.placeholder;
 		input.value = button.getAttribute( 'data-value' ) || '';
 
 		var help = document.createElement( 'p' );
 		help.className = 'ctt-quick-pop__help';
-		help.textContent = text.ticketHelp;
+		help.textContent = options.help;
 
 		var actions = document.createElement( 'div' );
 		actions.className = 'ctt-quick-pop__actions';
@@ -202,12 +222,12 @@
 				return;
 			}
 			ok.disabled = true;
-			save( postId, 'ticket_url', value )
+			save( postId, options.field, value )
 				.then( function ( html ) {
 					popover = null;
 					cell.innerHTML = html;
 					flash( cell, true );
-					var next = cell.querySelector( '.ctt-quick-ticket__edit' );
+					var next = cell.querySelector( options.focus );
 					if ( next ) {
 						next.focus();
 					}
@@ -261,9 +281,9 @@
 		} else if ( kind === 'image-remove' ) {
 			event.preventDefault();
 			update( control.closest( 'td' ), control.getAttribute( 'data-post' ), 'image', 0, '.ctt-quick-image__pick' );
-		} else if ( kind === 'ticket' ) {
+		} else if ( fields[ kind ] ) {
 			event.preventDefault();
-			openTicket( control );
+			openField( control, fields[ kind ] );
 		}
 	} );
 

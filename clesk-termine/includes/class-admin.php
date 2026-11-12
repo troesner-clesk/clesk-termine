@@ -15,7 +15,7 @@ final class Clesk_Termine_Admin {
 	const DUPLICATE_ACTION = 'clesk_termin_duplicate';
 
 	/**
-	 * Schnelleinstellungen in der Terminliste (Bild, Status, Ticket-Link).
+	 * Schnelleinstellungen in der Terminliste (Bild, Status, Ticket-Link, Preis).
 	 */
 	const QUICK_ACTION = 'clesk_termin_quick';
 
@@ -134,6 +134,12 @@ final class Clesk_Termine_Admin {
 					<label for="ctt-ticket"><?php esc_html_e( 'Ticket-Link', 'clesk-termine' ); ?></label>
 					<input type="text" inputmode="url" id="ctt-ticket" name="ctt[ticket_url]" value="<?php echo esc_attr( $f['ticket_url'] ); ?>" placeholder="https://" autocomplete="off" spellcheck="false">
 					<span class="ctt-admin__help"><?php esc_html_e( 'Adresse der Ticketseite, z. B. bei Eventbrite oder Eventim. Leer lassen, wenn es keinen Vorverkauf gibt. Bei „Ausverkauft“, „Abgesagt“ und „Geschlossene Veranstaltung“ wird kein Ticket-Button angezeigt.', 'clesk-termine' ); ?></span>
+				</p>
+				<p class="ctt-admin__field">
+					<label for="ctt-price"><?php esc_html_e( 'Preis ab (Euro)', 'clesk-termine' ); ?></label>
+					<input type="text" inputmode="decimal" id="ctt-price" name="ctt[price]" value="<?php echo esc_attr( Clesk_Termine_Render::amount( $f['price'] ) ); ?>" placeholder="<?php esc_attr_e( 'z. B. 18 oder 18,50', 'clesk-termine' ); ?>" autocomplete="off" aria-describedby="ctt-price-help ctt-price-error">
+					<span id="ctt-price-help" class="ctt-admin__help"><?php esc_html_e( 'Günstigster Preis, erscheint auf der Website als „ab 18 €“. 0 heißt Eintritt frei. Google bekommt den Preis mit den Termindaten und kann ihn in der Terminanzeige zeigen.', 'clesk-termine' ); ?></span>
+					<span id="ctt-price-error" class="ctt-admin__help ctt-admin__help--warn" role="alert" hidden><?php esc_html_e( 'Bitte nur eine Zahl eintragen, z. B. 18 oder 18,50. So wird der Preis nicht gespeichert.', 'clesk-termine' ); ?></span>
 				</p>
 				<p class="ctt-admin__field">
 					<label for="ctt-status"><?php esc_html_e( 'Status', 'clesk-termine' ); ?></label>
@@ -329,7 +335,7 @@ final class Clesk_Termine_Admin {
 	}
 
 	/**
-	 * Inhalt einer Zelle der Terminliste. Bild, Status und Ticket-Link lassen sich direkt in der Liste ändern.
+	 * Inhalt einer Zelle der Terminliste. Bild, Status, Ticket-Link und Preis lassen sich direkt in der Liste ändern.
 	 *
 	 * @param string $column  Spalte.
 	 * @param int    $post_id Beitrags-ID.
@@ -368,7 +374,9 @@ final class Clesk_Termine_Admin {
 				return self::status_cell( $post_id, $f['status'], $name );
 
 			case 'ctt_ticket':
-				return self::ticket_cell( $post_id, $f['ticket_url'], $name );
+				// Ticket-Link und Preis gehören zusammen: beide in einer Spalte, jeder mit eigener Schnelleinstellung.
+				$html = self::ticket_cell( $post_id, $f['ticket_url'], $name ) . self::price_cell( $post_id, $f['price'], $name );
+				return '' !== $html ? $html : $dash;
 		}
 		return '';
 	}
@@ -461,7 +469,7 @@ final class Clesk_Termine_Admin {
 			? '<a class="ctt-quick-ticket__link" href="' . esc_url( '' !== $href ? $href : $url ) . '" target="_blank" rel="noopener">' . esc_html__( 'Link', 'clesk-termine' ) . '<span class="screen-reader-text"> ' . esc_html__( '(öffnet neues Fenster)', 'clesk-termine' ) . '</span></a>'
 			: '';
 		if ( ! self::can_quick_edit( $post_id ) ) {
-			return '' !== $link ? $link : '<span aria-hidden="true">–</span>';
+			return '' !== $link ? '<div class="ctt-quick-ticket">' . $link . '</div>' : '';
 		}
 
 		$label = '' !== $url
@@ -479,7 +487,34 @@ final class Clesk_Termine_Admin {
 	}
 
 	/**
-	 * Schnelleinstellung aus der Terminliste speichern (Bild, Status oder Ticket-Link).
+	 * Preis in der Zelle „Tickets“: Betrag als Button zum Ändern, ohne Preis „+ Preis“.
+	 *
+	 * @param int    $post_id Beitrags-ID.
+	 * @param string $price   Gespeicherter Preis (Dezimalzahl mit Punkt).
+	 * @param string $name    Programm (für die Beschriftung).
+	 * @return string
+	 */
+	private static function price_cell( $post_id, $price, $name ) {
+		$text = Clesk_Termine_Render::price_text( $price );
+		if ( ! self::can_quick_edit( $post_id ) ) {
+			return '' !== $text ? '<div class="ctt-quick-price"><span class="ctt-quick-price__value">' . esc_html( $text ) . '</span></div>' : '';
+		}
+
+		$label = '' !== $text
+			/* translators: 1: Programm, 2: Preis, z. B. „ab 18 €“. */
+			? sprintf( __( 'Preis von „%1$s“ ändern, bisher %2$s', 'clesk-termine' ), $name, $text )
+			/* translators: %s: Programm. */
+			: sprintf( __( 'Preis für „%s“ eintragen', 'clesk-termine' ), $name );
+
+		return '<div class="ctt-quick-price"><button type="button" class="ctt-quick-price__edit' . ( '' === $text ? ' ctt-quick-price__edit--add' : '' ) . '" data-ctt-quick="price" data-post="' . (int) $post_id . '" data-value="' . esc_attr( Clesk_Termine_Render::amount( $price ) ) . '" aria-label="' . esc_attr( $label ) . '" aria-expanded="false">'
+			. ( '' === $text
+				? '<span class="dashicons dashicons-plus-alt2" aria-hidden="true"></span><span aria-hidden="true">' . esc_html__( 'Preis', 'clesk-termine' ) . '</span>'
+				: '<span class="ctt-quick-price__value" aria-hidden="true">' . esc_html( $text ) . '</span><span class="dashicons dashicons-edit" aria-hidden="true"></span>' )
+			. '</button></div>';
+	}
+
+	/**
+	 * Schnelleinstellung aus der Terminliste speichern (Bild, Status, Ticket-Link oder Preis).
 	 */
 	public static function ajax_quick() {
 		check_ajax_referer( self::QUICK_ACTION, 'nonce' );
@@ -524,6 +559,14 @@ final class Clesk_Termine_Admin {
 				}
 				// Bereinigt wird über den sanitize_callback aus register_post_meta().
 				update_post_meta( $post_id, Clesk_Termine_Events::FIELDS['ticket_url'], wp_slash( $value ) );
+				$column = 'ctt_ticket';
+				break;
+
+			case 'price':
+				if ( '' !== $value && '' === Clesk_Termine_Events::sanitize_price( $value ) ) {
+					wp_send_json_error( array( 'message' => __( 'Bitte nur eine Zahl eintragen, z. B. 18 oder 18,50.', 'clesk-termine' ) ), 400 );
+				}
+				update_post_meta( $post_id, Clesk_Termine_Events::FIELDS['price'], wp_slash( $value ) );
 				$column = 'ctt_ticket';
 				break;
 
@@ -944,7 +987,7 @@ final class Clesk_Termine_Admin {
 		}
 		if ( ! empty( $_GET['ctt_kopie'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nur Anzeige.
 			echo '<div class="notice notice-success is-dismissible"><p><strong>' . esc_html__( 'Kopie angelegt (Entwurf).', 'clesk-termine' ) . '</strong> '
-				. esc_html__( 'Datum, Stadt und Location anpassen, bei Bedarf auch Ticket-Link und Anschrift, dann auf „Veröffentlichen“ klicken. Status und Hinweis wurden nicht übernommen.', 'clesk-termine' ) . '</p></div>';
+				. esc_html__( 'Datum, Stadt und Location anpassen, bei Bedarf auch Ticket-Link, Preis und Anschrift, dann auf „Veröffentlichen“ klicken. Status und Hinweis wurden nicht übernommen.', 'clesk-termine' ) . '</p></div>';
 		}
 
 		$post = get_post();
@@ -973,6 +1016,7 @@ final class Clesk_Termine_Admin {
 	 * @param string $hook Admin-Seite.
 	 */
 	public static function assets( $hook ) {
+		global $wp_locale;
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 		if ( ! $screen || Clesk_Termine_Events::POST_TYPE !== $screen->post_type ) {
 			return;
@@ -990,14 +1034,17 @@ final class Clesk_Termine_Admin {
 						'action' => self::QUICK_ACTION,
 						'nonce'  => wp_create_nonce( self::QUICK_ACTION ),
 						'text'   => array(
-							'saved'       => __( 'Gespeichert', 'clesk-termine' ),
-							'failed'      => __( 'Nicht gespeichert. Bitte noch einmal versuchen.', 'clesk-termine' ),
-							'imageTitle'  => __( 'Bild für den Termin', 'clesk-termine' ),
-							'imageButton' => __( 'Bild übernehmen', 'clesk-termine' ),
-							'ticketLabel' => __( 'Ticket-Link', 'clesk-termine' ),
-							'ticketHelp'  => __( 'Adresse der Ticketseite. Leer lassen, wenn es keinen Vorverkauf gibt.', 'clesk-termine' ),
-							'save'        => __( 'Speichern', 'clesk-termine' ),
-							'cancel'      => __( 'Abbrechen', 'clesk-termine' ),
+							'saved'            => __( 'Gespeichert', 'clesk-termine' ),
+							'failed'           => __( 'Nicht gespeichert. Bitte noch einmal versuchen.', 'clesk-termine' ),
+							'imageTitle'       => __( 'Bild für den Termin', 'clesk-termine' ),
+							'imageButton'      => __( 'Bild übernehmen', 'clesk-termine' ),
+							'ticketLabel'      => __( 'Ticket-Link', 'clesk-termine' ),
+							'ticketHelp'       => __( 'Adresse der Ticketseite. Leer lassen, wenn es keinen Vorverkauf gibt.', 'clesk-termine' ),
+							'priceLabel'       => __( 'Preis ab (Euro)', 'clesk-termine' ),
+							'priceHelp'        => __( 'Günstigster Preis. 0 heißt Eintritt frei. Leer lassen, wenn es keinen Preis gibt.', 'clesk-termine' ),
+							'pricePlaceholder' => __( 'z. B. 18 oder 18,50', 'clesk-termine' ),
+							'save'             => __( 'Speichern', 'clesk-termine' ),
+							'cancel'           => __( 'Abbrechen', 'clesk-termine' ),
 						),
 					)
 				) . ';',
@@ -1014,6 +1061,11 @@ final class Clesk_Termine_Admin {
 						'venuePlaces' => (object) Clesk_Termine_Events::venue_places(),
 						'extras'      => self::extra_labels(),
 						'isCopy'      => ! empty( $_GET['ctt_kopie'] ), // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- nur Anzeige.
+						// Zahlenformat der Website-Sprache, damit das Preisfeld so aussieht wie nach dem Speichern.
+						'number'      => array(
+							'decimal'   => isset( $wp_locale->number_format['decimal_point'] ) ? (string) $wp_locale->number_format['decimal_point'] : ',',
+							'thousands' => isset( $wp_locale->number_format['thousands_sep'] ) ? (string) $wp_locale->number_format['thousands_sep'] : '.',
+						),
 					)
 				) . ';',
 				'before'

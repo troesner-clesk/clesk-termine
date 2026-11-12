@@ -1,7 +1,7 @@
 /**
  * Termine: Vorschläge im Titelfeld, Stadt und Anschrift zur bekannten Location ergänzen,
  * Veröffentlichen ohne Datum abfangen, nach dem Duplizieren die zu ändernden Felder markieren,
- * am eingeklappten Abschnitt „Weitere Angaben“ nennen, was dort gefüllt ist.
+ * am eingeklappten Abschnitt „Weitere Angaben“ nennen, was dort gefüllt ist, und den Preis prüfen.
  */
 ( function () {
 	'use strict';
@@ -184,6 +184,78 @@
 				if ( dateError ) {
 					dateError.hidden = true;
 				}
+			}
+		} );
+	}
+
+	// Preis: Eingabe wie „18,50“, „ab 18 €“ oder „frei“ verstehen und nach dem Verlassen des Feldes so zeigen,
+	// wie er gespeichert wird. Unlesbares meldet das Feld, sonst bliebe der Preis beim Speichern still leer.
+	var price = document.getElementById( 'ctt-price' );
+	var priceError = document.getElementById( 'ctt-price-error' );
+	var number = data.number || {};
+
+	// Gleiche Regeln wie Clesk_Termine_Events::sanitize_price(). Liefert '' (leer), die Zahl mit Punkt oder null (unlesbar).
+	function parsePrice( raw ) {
+		var value = String( raw ).trim().toLowerCase();
+		var m, whole, dec;
+		if ( value === '' ) {
+			return '';
+		}
+		if ( [ 'frei', 'eintritt frei', 'kostenlos', 'gratis', 'free' ].indexOf( value ) !== -1 ) {
+			return '0';
+		}
+		value = value
+			.replace( /^ab/, '' )
+			.replace( /euro|eur|€/g, '' )
+			.replace( /[\s  ]+/g, '' )
+			.replace( /[.,]?[-–—]+$/, '' )
+			.replace( /[.,]+$/, '' );
+		if ( ( m = /^(\d{1,6})(?:[.,](\d{1,2}))?$/.exec( value ) ) ) {
+			whole = m[ 1 ];
+		} else if ( ( m = /^(\d{1,3}(?:\.\d{3})+)(?:,(\d{1,2}))?$/.exec( value ) ) || ( m = /^(\d{1,3}(?:,\d{3})+)(?:\.(\d{1,2}))?$/.exec( value ) ) ) {
+			whole = m[ 1 ].replace( /[.,]/g, '' );
+		} else {
+			return null;
+		}
+		if ( whole.length > 6 ) {
+			return null;
+		}
+		whole = whole.replace( /^0+(?=\d)/, '' );
+		dec = ( m[ 2 ] || '' ).replace( /0+$/, '' );
+		return dec ? whole + '.' + dec : whole;
+	}
+
+	// Wie Clesk_Termine_Render::amount(): ganze Euro ohne, sonst mit zwei Nachkommastellen.
+	function formatPrice( value ) {
+		var parts = value.split( '.' );
+		var whole = parts[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, number.thousands || '' );
+		return parts.length > 1 ? whole + ( number.decimal || ',' ) + ( parts[ 1 ] + '0' ).slice( 0, 2 ) : whole;
+	}
+
+	function showPriceError( show ) {
+		if ( priceError ) {
+			priceError.hidden = ! show;
+		}
+		if ( show ) {
+			price.setAttribute( 'aria-invalid', 'true' );
+		} else {
+			price.removeAttribute( 'aria-invalid' );
+		}
+	}
+
+	if ( price ) {
+		price.addEventListener( 'change', function () {
+			var parsed = parsePrice( price.value );
+			if ( parsed === null ) {
+				showPriceError( true );
+				return;
+			}
+			price.value = parsed === '' ? '' : formatPrice( parsed );
+			showPriceError( false );
+		} );
+		price.addEventListener( 'input', function () {
+			if ( price.hasAttribute( 'aria-invalid' ) && parsePrice( price.value ) !== null ) {
+				showPriceError( false );
 			}
 		} );
 	}

@@ -319,6 +319,22 @@
 	color: var(--ctt-on-accent);
 }
 
+/* Preis neben dem Ticket-Button: „ab 18 €“ oder „Eintritt frei“. */
+.ctt .ctt-price {
+	color: var(--ctt-text);
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+/* Preis und Ticket-Button bleiben beim Umbrechen zusammen. */
+.ctt .ctt-buy {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+}
+
 .ctt .ctt-badge {
 	display: inline-block;
 	padding: 5px 9px;
@@ -819,7 +835,15 @@
 }
 
 .ctt--ticket .ctt-event__status {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
 	margin-top: 10px;
+}
+
+.ctt--ticket .ctt-event__status .ctt-price {
+	font-size: 16px;
 }
 
 .ctt--ticket .ctt-event__actions {
@@ -1006,6 +1030,10 @@
 	min-height: 48px;
 	padding: 12px 24px 12px 18px;
 	font-size: 17px;
+}
+
+.ctt .ctt-single__actions .ctt-price {
+	font-size: 18px;
 }
 
 .ctt-single--cancelled .ctt-single__date {

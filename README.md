@@ -4,17 +4,18 @@ WordPress-Plugin für Auftrittstermine von Künstlerinnen, Künstlern und Verans
 
 ## Funktionen
 
-- Eigener Menüpunkt „Termine“ mit den Feldern Programm (Titel), Datum, Uhrzeit, Stadt, Location, Ticket-Link und Status. Optional und eingeklappt: Hinweis, Anschrift der Location (Straße, PLZ) und Link „Mehr Infos“; die Zeile des eingeklappten Abschnitts nennt, was davon ausgefüllt ist. Dazu optional eine Beschreibung und ein Bild.
-- Schnelleinstellungen in der Terminliste: Die Liste zeigt das Bild jedes Termins. Ein Klick darauf öffnet die Mediathek zum Wählen oder Tauschen, das kleine Kreuz entfernt das Bild. Status und Ticket-Link lassen sich ebenfalls direkt in der Zeile ändern. Jede Änderung wird sofort gespeichert.
+- Eigener Menüpunkt „Termine“ mit den Feldern Programm (Titel), Datum, Uhrzeit, Stadt, Location, Ticket-Link, Preis und Status. Optional und eingeklappt: Hinweis, Anschrift der Location (Straße, PLZ) und Link „Mehr Infos“; die Zeile des eingeklappten Abschnitts nennt, was davon ausgefüllt ist. Dazu optional eine Beschreibung und ein Bild.
+- Schnelleinstellungen in der Terminliste: Die Liste zeigt das Bild jedes Termins. Ein Klick darauf öffnet die Mediathek zum Wählen oder Tauschen, das kleine Kreuz entfernt das Bild. Status, Ticket-Link und Preis lassen sich ebenfalls direkt in der Zeile ändern. Jede Änderung wird sofort gespeichert.
 - „Duplizieren“ in der Terminliste und im Bearbeiten-Fenster: legt eine Kopie als Entwurf an und markiert die Felder, die sich üblicherweise ändern. Status und Hinweis werden nicht übernommen.
 - Vorschläge beim Tippen für Programm, Stadt und Location aus bisherigen Terminen; eine bekannte Location ergänzt eine noch leere Stadt und die Anschrift. Eine eingetragene Stadt und selbst eingetippte Anschriften bleiben stehen; nur die in eine Kopie übernommene Anschrift wird ersetzt, wenn sich die Location ändert.
 - Status mit Badge: Wenige Tickets, Ausverkauft, Zusatztermin, Verlegt, Abgesagt, Eintritt frei, Geschlossene Veranstaltung. Bei „Ausverkauft“, „Abgesagt“ und „Geschlossene Veranstaltung“ entfällt der Ticket-Button.
+- Preis (optional): Der günstigste Preis erscheint als „ab 18 €“ vor dem Ticket-Button (im Design „Tickets“ beim Status), auch ohne Vorverkauf; 0 erscheint als „Eintritt frei“. Bei vergangenen, ausverkauften, abgesagten und geschlossenen Terminen entfällt er, beim Status „Eintritt frei“ steht nur das Badge. Eingaben wie „18,50“, „ab 18 €“, „18,-“ oder „frei“ werden verstanden. Google bekommt den Preis über die strukturierten Daten und kann ihn in der Terminanzeige zeigen.
 - Block „Termine“ mit drei Designs: Karten, Liste, Tickets. Das Design wird im Editor am Block gewählt (Seitenleiste „Block“, Bereich „Darstellung“). Im Karten-Design steht bei Terminen ohne Bild ein Ticketsymbol in der Bildfläche.
 - Filter für Stadt, Location und Monat ohne Neuladen. Ein Filter erscheint nur, wenn es mindestens zwei Werte gibt; nicht kombinierbare Werte werden ausgegraut. Ohne JavaScript bleiben alle Termine sichtbar.
 - Vergangene Termine verschwinden am Tag nach dem Termin automatisch aus den Listen (Zeitzone der Website). Eine Liste kann alternativ vergangene oder alle Termine zeigen, etwa als Archiv.
 - Eigene Seite je Termin unter `/termine/programm-stadt-datum/` mit Eckdaten, Bild, Beschreibung, Ticket-Button, Karte, Teilen und weiteren Terminen desselben Programms.
 - Teilen: auf Geräten mit Teilen-Dialog öffnet sich dieser, sonst stehen WhatsApp, Facebook, E-Mail und „Link kopieren“ bereit. Alles reine Links, es werden keine fremden Skripte geladen.
-- Für Suchmaschinen und Vorschauen in Messengern: Seitentitel, Beschreibung, Open-Graph-Daten und strukturierte Daten (schema.org/Event). Vergangene, geschlossene und passwortgeschützte Termine sind von der Indexierung ausgenommen und stehen nicht in der Sitemap von WordPress.
+- Für Suchmaschinen und Vorschauen in Messengern: Seitentitel, Beschreibung, Open-Graph-Daten und strukturierte Daten (schema.org/Event mit Angebot aus Ticket-Link und Preis; der Status „Eintritt frei“ zählt dort wie Preis 0). Vergangene, geschlossene und passwortgeschützte Termine sind von der Indexierung ausgenommen und stehen nicht in der Sitemap von WordPress.
 - Kartenlink zu Google Maps (reiner Link, nichts wird eingebettet).
 - Keine Abhängigkeit von der REST-API im Frontend.
 
@@ -114,6 +115,7 @@ Beitragstyp `clesk_termin`. Titel ist das Programm, Inhalt die Beschreibung, Bei
 | `_ctt_street` | Straße und Hausnummer |
 | `_ctt_zip` | PLZ |
 | `_ctt_ticket_url` | Ticket-Link |
+| `_ctt_price` | Preis ab in Euro als Dezimalzahl mit Punkt (`18`, `18.5`), `0` = Eintritt frei, leer = keine Angabe |
 | `_ctt_status` | `few`, `soldout`, `extra`, `moved`, `cancelled`, `free`, `private` oder leer |
 | `_ctt_note` | Hinweis |
 | `_ctt_info_url` | Link „Mehr Infos“ |

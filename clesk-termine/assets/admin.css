@@ -86,7 +86,8 @@
 .ctt-admin.is-copy #ctt-venue,
 .ctt-admin.is-copy #ctt-street,
 .ctt-admin.is-copy #ctt-zip,
-.ctt-admin.is-copy #ctt-ticket {
+.ctt-admin.is-copy #ctt-ticket,
+.ctt-admin.is-copy #ctt-price {
 	border-color: #dba617;
 	box-shadow: 0 0 0 1px #dba617;
 }
@@ -137,7 +138,7 @@
 }
 
 .post-type-clesk_termin .wp-list-table .column-ctt_ticket {
-	width: 110px;
+	width: 124px;
 }
 
 /* Luftigere Zeilen mit mittig ausgerichteten Zellen. Schmal stapelt WordPress die Zellen, dort bleibt es bei den Standardabständen. */
@@ -406,6 +407,76 @@
 }
 
 .ctt-quick-ticket__edit:focus-visible {
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+/* Schnelleinstellungen: Preis (unter dem Ticket-Link) */
+
+.ctt-quick-price {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+.ctt-quick-ticket + .ctt-quick-price {
+	margin-top: 6px;
+}
+
+.ctt-quick-price__value {
+	color: #1d2327;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.ctt-quick-price__edit {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	min-height: 28px;
+	margin: 0 0 0 -6px;
+	padding: 0 6px;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	background: none;
+	color: #646970;
+	font: inherit;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.ctt-quick-price__edit .ctt-quick-price__value {
+	font-size: 13px;
+}
+
+.ctt-quick-price__edit .dashicons {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+.ctt-quick-price__edit--add {
+	margin-left: 0;
+	padding: 0 10px 0 6px;
+	border: 1px dashed #a7aaad;
+	border-radius: 999px;
+	color: #50575e;
+}
+
+.ctt-quick-price__edit:hover,
+.ctt-quick-price__edit:focus-visible,
+.ctt-quick-price__edit[aria-expanded="true"] {
+	border-color: #2271b1;
+	color: #2271b1;
+	outline: none;
+}
+
+.ctt-quick-price__edit:hover .ctt-quick-price__value,
+.ctt-quick-price__edit:focus-visible .ctt-quick-price__value {
+	color: #2271b1;
+}
+
+.ctt-quick-price__edit:focus-visible {
 	box-shadow: 0 0 0 1px #2271b1;
 }
 
