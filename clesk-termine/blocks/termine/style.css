@@ -513,8 +513,10 @@
 	transform: rotate(-3deg);
 }
 
+/* Auf der Bildfläche sitzt das Kalenderblatt rechts unten, damit Schriftzüge oben links im Motiv frei bleiben. */
 .ctt--karten .ctt-groups--media .ctt-event__date {
-	align-self: start;
+	align-self: end;
+	justify-self: end;
 	margin: 12px;
 }
 
@@ -563,11 +565,11 @@
 	object-fit: cover;
 }
 
-/* Ohne Bild steht ein großes Ticketsymbol in der Bildfläche, rechts neben dem Kalenderblatt. */
+/* Ohne Bild steht ein großes Ticketsymbol in der Bildfläche, links neben dem Kalenderblatt. */
 .ctt--karten .ctt-event__media .ctt-event__placeholder {
 	position: absolute;
 	top: 50%;
-	right: 14%;
+	left: 14%;
 	width: 60px;
 	height: 60px;
 	color: var(--ctt-accent);
