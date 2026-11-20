@@ -1,5 +1,5 @@
 /**
- * Block „Termine“ und Terminseiten: Suche, Filter (Stadt, Location, Monat), Teilen und Link kopieren.
+ * Block „Termine“ und Terminseiten: Suche, Filter (Stadt, Location, Monat; schmal hinter einem Knopf), Teilen und Link kopieren.
  * Ohne JavaScript bleibt die Filterleiste samt Suchfeld verborgen und alle Termine sichtbar,
  * Teilen-Links führen dann zum Abschnitt „Termin teilen“ der Terminseite.
  */
@@ -54,6 +54,9 @@
 		var resets = toArray( root.querySelectorAll( '.ctt-reset' ) );
 		var barReset = bar.querySelector( '.ctt-reset' );
 		var count = bar.querySelector( '.ctt-count' );
+		// Knopf, hinter dem die Filter in schmalen Containern zugeklappt sind (nur mit Suchfeld, Sichtbarkeit per CSS).
+		var toggle = bar.querySelector( '.ctt-filters__toggle' );
+		var badge = toggle ? toggle.querySelector( '.ctt-filters__badge' ) : null;
 		var empty = root.querySelector( '.ctt-empty--filter' );
 		var one = root.getAttribute( 'data-ctt-one' ) || '1 Termin';
 		var many = root.getAttribute( 'data-ctt-many' ) || '%d Termine';
@@ -148,6 +151,15 @@
 			if ( barReset ) {
 				barReset.hidden = ! active;
 			}
+			// Zugeklappt zeigt der Knopf, wie viele Filter gesetzt sind.
+			if ( toggle ) {
+				var set = Object.keys( s ).length;
+				toggle.classList.toggle( 'is-active', set > 0 );
+				if ( badge ) {
+					badge.textContent = set ? String( set ) : '';
+					badge.hidden = ! set;
+				}
+			}
 			if ( empty ) {
 				empty.hidden = shown > 0;
 			}
@@ -207,6 +219,14 @@
 				( search || selects[ 0 ] ).focus();
 			} );
 		} );
+
+		if ( toggle ) {
+			toggle.addEventListener( 'click', function () {
+				var open = toggle.getAttribute( 'aria-expanded' ) !== 'true';
+				toggle.setAttribute( 'aria-expanded', open ? 'true' : 'false' );
+				bar.classList.toggle( 'is-open', open );
+			} );
+		}
 
 		// Beim Zurückblättern stellt der Browser die Auswahl wieder her, ohne ein Ereignis zu senden.
 		window.addEventListener( 'pageshow', function () {

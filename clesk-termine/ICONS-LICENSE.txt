@@ -1,4 +1,4 @@
-Die Symbole ticket, map-pin, info, calendar, landmark, x, share-2, copy, mail, arrow-left, chevron-down und search stammen aus Lucide (https://lucide.dev), Version 1.72.0.
+Die Symbole ticket, map-pin, info, calendar, landmark, x, share-2, copy, mail, arrow-left, chevron-down, search und sliders-horizontal stammen aus Lucide (https://lucide.dev), Version 1.72.0.
 info, calendar, x, arrow-left, chevron-down und search gehen auf Feather zurück (MIT-Lizenz, siehe unten).
 
 ISC License

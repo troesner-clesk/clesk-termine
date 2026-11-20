@@ -281,16 +281,25 @@ final class Clesk_Termine_Render {
 			'month' => array( __( 'Monat', 'clesk-termine' ), __( 'Alle Monate', 'clesk-termine' ), 'calendar' ),
 		);
 
-		$html = '<div class="ctt-filters" role="group" aria-label="' . esc_attr__( 'Termine filtern', 'clesk-termine' ) . '"' . ( $editor ? '' : ' hidden' ) . '>';
+		// Mit Suchfeld klappen die Filter in schmalen Containern hinter einen Knopf neben der Suche (nur per CSS, breit stehen sie direkt in der Leiste).
+		$toggle = $search && $filters;
+
+		$html = '<div class="ctt-filters' . ( $toggle ? ' ctt-filters--toggle' : '' ) . '" role="group" aria-label="' . esc_attr__( 'Termine filtern', 'clesk-termine' ) . '"' . ( $editor ? '' : ' hidden' ) . '>';
 		if ( $search ) {
 			$id    = $uid . '-search';
 			$html .= '<div class="ctt-search">';
 			$html .= '<label class="ctt-sr" for="' . esc_attr( $id ) . '">' . esc_html__( 'Termine durchsuchen', 'clesk-termine' ) . '</label>';
 			$html .= self::icon( 'search', 'ctt-search__icon' );
 			$html .= '<input type="search" id="' . esc_attr( $id ) . '" class="ctt-search__input" data-ctt-search'
-				. ' placeholder="' . esc_attr__( 'Ort, Programm oder Location', 'clesk-termine' ) . '"'
+				. ' placeholder="' . esc_attr__( 'Ort, Programm, Location', 'clesk-termine' ) . '"'
 				. ' autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">';
 			$html .= '</div>';
+		}
+		if ( $toggle ) {
+			$panel = $uid . '-panel';
+			$html .= '<button type="button" class="ctt-filters__toggle" aria-expanded="false" aria-controls="' . esc_attr( $panel ) . '" title="' . esc_attr__( 'Filter', 'clesk-termine' ) . '">'
+				. self::icon( 'sliders' ) . '<span class="ctt-sr">' . esc_html__( 'Filter', 'clesk-termine' ) . '</span><span class="ctt-filters__badge" hidden></span></button>';
+			$html .= '<div class="ctt-filters__panel" id="' . esc_attr( $panel ) . '">';
 		}
 		foreach ( $filters as $key => $options ) {
 			$id    = $uid . '-' . $key;
@@ -303,6 +312,9 @@ final class Clesk_Termine_Render {
 				$html .= '<option value="' . esc_attr( $value ) . '">' . esc_html( $label ) . '</option>';
 			}
 			$html .= '</select></div>';
+		}
+		if ( $toggle ) {
+			$html .= '</div>';
 		}
 		$html .= '<button type="button" class="ctt-reset" hidden>' . self::icon( 'close' ) . '<span>' . esc_html__( 'Zurücksetzen', 'clesk-termine' ) . '</span></button>';
 		$html .= '<p class="ctt-count" aria-live="polite"></p>';
@@ -438,8 +450,8 @@ final class Clesk_Termine_Render {
 					'alt'      => '',
 					'loading'  => 'lazy',
 					'decoding' => 'async',
-					// Schmal steht das Bild in voller Breite über dem Text, sonst in der 208 px breiten Spalte.
-					'sizes'    => '(max-width: 700px) 100vw, 208px',
+					// Das Bild steht höchstens in der 208 px breiten Spalte, die kompakte Karte in schmalen Containern zeigt keins.
+					'sizes'    => '208px',
 				)
 			);
 		}
@@ -472,11 +484,16 @@ final class Clesk_Termine_Render {
 
 		if ( 'karten' === $design ) {
 			$city = '' !== $e['city'] ? '<p class="ctt-event__city">' . esc_html( $e['city'] ) . '</p>' : '';
+			// Geschütztes Leerzeichen: „Uhr“ rutscht beim Umbrechen nie allein in die nächste Zeile.
 			/* translators: %s: Uhrzeit. */
-			$time  = '' !== $e['time'] ? sprintf( __( '%s Uhr', 'clesk-termine' ), $e['time'] ) : '';
+			$time  = '' !== $e['time'] ? str_replace( ' ', "\xC2\xA0", sprintf( __( '%s Uhr', 'clesk-termine' ), $e['time'] ) ) : '';
 			$where = implode( ', ', array_filter( array( $e['venue'], $time ), 'strlen' ) );
 			$venue = '' !== $where ? '<p class="ctt-event__venue">' . esc_html( $where ) . '</p>' : '';
-			return $sr . $city . $title . $venue . $note;
+			// Status und Preis stehen breit bei den Aktionen (actions_html()). Die kompakte Karte in schmalen
+			// Containern zeigt sie stattdessen hier, damit Symbole und Ticket-Button in eine Zeile passen.
+			// Das CSS blendet je nach Breite genau eine der beiden Stellen ein.
+			$status = self::badge_html( $e ) . self::price_html( $e );
+			return $sr . $city . $title . $venue . $note . ( '' !== $status ? '<p class="ctt-event__status">' . $status . '</p>' : '' );
 		}
 
 		$parts = array();
@@ -968,6 +985,7 @@ final class Clesk_Termine_Render {
 			'venue'    => '<path d="M10 18v-7"/><path d="M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="M3 22h18"/><path d="M6 18v-7"/>',
 			'close'    => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
 			'search'   => '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+			'sliders'  => '<path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/>',
 			'share'    => '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
 			'copy'     => '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
 			'mail'     => '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/>',

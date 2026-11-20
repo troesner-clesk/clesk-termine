@@ -223,7 +223,7 @@
 .ctt .ctt-search__icon {
 	position: absolute;
 	top: 50%;
-	left: 14px;
+	left: 13px;
 	width: 18px;
 	height: 18px;
 	color: var(--ctt-accent);
@@ -241,7 +241,8 @@
 	height: auto;
 	min-height: 46px;
 	margin: 0;
-	padding: 11px 14px 11px 42px;
+	/* Knapp gehalten, damit der Platzhalter neben dem Filterknopf auch auf 360 px breiten Handys ganz zu sehen ist. */
+	padding: 11px 10px 11px 39px;
 	border: 2px solid var(--ctt-accent);
 	border-radius: var(--ctt-radius);
 	background: var(--ctt-bg);
@@ -267,6 +268,70 @@
 
 .ctt .ctt-search .ctt-search__input::-webkit-search-cancel-button {
 	cursor: pointer;
+}
+
+/* Bei leerem Feld hält Chromium sonst Platz für den unsichtbaren Löschen-Knopf frei, das kürzt den Platzhalter. */
+.ctt .ctt-search .ctt-search__input:placeholder-shown::-webkit-search-cancel-button {
+	display: none;
+}
+
+/*
+ * Filterknopf neben dem Suchfeld: nur in schmalen Containern (siehe unten), dort klappen die Filter darunter auf.
+ * Breit bleibt er verborgen und die Hülle der Filter gibt sie direkt an die Leiste weiter.
+ */
+.ctt .ctt-filters__panel {
+	display: contents;
+}
+
+.ctt .ctt-filters__toggle {
+	display: none;
+	position: relative;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 46px;
+	min-height: 46px;
+	margin: 0;
+	padding: 0;
+	border: 2px solid var(--ctt-accent);
+	border-radius: var(--ctt-radius);
+	background: var(--ctt-accent);
+	box-shadow: none;
+	color: var(--ctt-on-accent);
+	font: inherit;
+	line-height: 1;
+	text-transform: none;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.ctt .ctt-filters__toggle:hover,
+.ctt .ctt-filters__toggle:focus,
+.ctt .ctt-filters__toggle[aria-expanded="true"] {
+	border-color: var(--ctt-accent-dark);
+	background: var(--ctt-accent-dark);
+	color: var(--ctt-on-accent);
+}
+
+/* Gesetzte Filter: Rahmen wie bei aktiven Filtern, dazu die Anzahl. */
+.ctt .ctt-filters__toggle.is-active {
+	border-color: var(--ctt-highlight);
+}
+
+.ctt .ctt-filters__badge {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	min-width: 20px;
+	height: 20px;
+	padding: 0 5px;
+	border-radius: 10px;
+	background: var(--ctt-highlight);
+	color: #1f1f1f;
+	font-size: 12px;
+	font-weight: 800;
+	line-height: 20px;
+	text-align: center;
 }
 
 /* Gruppen und gemeinsame Bausteine ------------------------------------ */
@@ -676,6 +741,11 @@
 .ctt--karten .ctt-event__actions {
 	grid-area: actions;
 	padding: 16px 22px 16px 0;
+}
+
+/* Status und Preis im Text gehören zur kompakten Karte (schmale Container), sonst stehen sie bei den Aktionen. */
+.ctt--karten .ctt-event__status {
+	display: none;
 }
 
 .ctt--karten .ctt-event--cancelled .ctt-date__monthname {
@@ -1268,30 +1338,64 @@
 		max-width: none;
 	}
 
+	/*
+	 * Mit Suchfeld: Suche und Filterknopf allein in der ersten Zeile (Grundbreite der Suche mit etwas Luft für
+	 * den Knopf), die Filter klappen auf Knopfdruck darunter auf. Trefferzahl und „Zurücksetzen“ teilen sich
+	 * die letzte Zeile.
+	 */
+	.ctt .ctt-filters--toggle .ctt-search {
+		flex: 1 1 calc(100% - 60px);
+	}
+
+	.ctt .ctt-filters--toggle .ctt-filters__toggle {
+		display: inline-flex;
+	}
+
+	.ctt .ctt-filters--toggle:not(.is-open) .ctt-filters__panel {
+		display: none;
+	}
+
+	.ctt .ctt-filters--toggle .ctt-count {
+		flex: 0 1 auto;
+		order: 1;
+	}
+
+	.ctt .ctt-filters--toggle .ctt-reset {
+		order: 2;
+	}
+
 	.ctt .ctt-group__title {
 		font-size: 22px;
 	}
 
-	/* Ohne Bilder: Kalenderblatt links, Text rechts. */
-	.ctt--karten .ctt-event {
-		grid-template-areas: "visual main" "visual actions";
+	/*
+	 * Kompakte Karte, mit und ohne Bilder: Kalenderblatt links, Text daneben, Symbole und Ticket-Button
+	 * in einer Zeile darunter. Das Bild entfällt, damit auf dem Handy mehrere Termine auf einen Blick passen.
+	 * Status und Preis stehen dafür im Text (Clesk_Termine_Render::main_html()).
+	 */
+	.ctt--karten .ctt-event,
+	.ctt--karten .ctt-groups--media .ctt-event {
+		grid-template-areas: "visual main" "actions actions";
 		grid-template-columns: auto minmax(0, 1fr);
 		align-items: start;
+		min-height: 0;
 	}
 
-	.ctt--karten .ctt-event__date {
+	.ctt--karten .ctt-groups--media .ctt-event__media {
+		display: none;
+	}
+
+	.ctt--karten .ctt-event__date,
+	.ctt--karten .ctt-groups--media .ctt-event__date {
 		align-self: start;
+		justify-self: start;
 		width: 58px;
-		margin: 14px 0 14px 14px;
+		margin: 14px 0 10px 14px;
 	}
 
 	.ctt--karten .ctt-event__main {
-		padding: 14px 14px 6px;
-	}
-
-	.ctt--karten .ctt-event__actions {
-		justify-content: flex-start;
-		padding: 2px 14px 14px;
+		align-self: center;
+		padding: 12px 14px 10px;
 	}
 
 	.ctt--karten .ctt-event__city {
@@ -1303,33 +1407,38 @@
 		font-size: 16px;
 	}
 
-	/* Mit Bildern: Bild oben, Kalenderblatt darauf, Text darunter. */
-	.ctt--karten .ctt-groups--media .ctt-event {
-		grid-template-areas: "visual" "main" "actions";
-		grid-template-columns: minmax(0, 1fr);
-		min-height: 0;
+	.ctt--karten .ctt-event__status {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px 10px;
+		margin-top: 4px;
 	}
 
-	.ctt--karten .ctt-groups--media .ctt-event__date {
-		margin: 12px;
+	.ctt--karten .ctt-event__status .ctt-price {
+		font-size: 16px;
 	}
 
-	.ctt--karten .ctt-groups--media .ctt-event__media {
-		min-height: 0;
-		aspect-ratio: 16 / 9;
+	.ctt--karten .ctt-event__actions > .ctt-badge,
+	.ctt--karten .ctt-event__actions .ctt-price {
+		display: none;
 	}
 
-	.ctt--karten .ctt-groups--media .ctt-event__media--empty {
-		min-height: 98px;
-		aspect-ratio: auto;
+	.ctt--karten .ctt-event__actions {
+		justify-content: flex-start;
+		gap: 6px;
+		padding: 0 14px 14px;
 	}
 
-	.ctt--karten .ctt-groups--media .ctt-event__main {
-		padding: 14px 16px 6px;
+	.ctt--karten .ctt-icon {
+		width: 36px;
+		height: 36px;
 	}
 
-	.ctt--karten .ctt-groups--media .ctt-event__actions {
-		padding: 2px 16px 16px;
+	/* Symbole links, Ticket-Button rechts. */
+	.ctt--karten .ctt-event__actions > .ctt-buy,
+	.ctt--karten .ctt-event__actions > .ctt-ticket {
+		margin-left: auto;
 	}
 
 	.ctt--liste .ctt-event,
@@ -1487,30 +1596,56 @@
 			max-width: none;
 		}
 
+		/* Mit Suchfeld: Suche und Filterknopf in einer Zeile, die Filter klappen auf Knopfdruck darunter auf. */
+		.ctt .ctt-filters--toggle .ctt-search {
+			flex: 1 1 calc(100% - 60px);
+		}
+
+		.ctt .ctt-filters--toggle .ctt-filters__toggle {
+			display: inline-flex;
+		}
+
+		.ctt .ctt-filters--toggle:not(.is-open) .ctt-filters__panel {
+			display: none;
+		}
+
+		.ctt .ctt-filters--toggle .ctt-count {
+			flex: 0 1 auto;
+			order: 1;
+		}
+
+		.ctt .ctt-filters--toggle .ctt-reset {
+			order: 2;
+		}
+
 		.ctt .ctt-group__title {
 			font-size: 22px;
 		}
 
-		/* Ohne Bilder: Kalenderblatt links, Text rechts. */
-		.ctt--karten .ctt-event {
-			grid-template-areas: "visual main" "visual actions";
+		/* Kompakte Karte, mit und ohne Bilder (Erklärung oben bei den @container-Regeln). */
+		.ctt--karten .ctt-event,
+		.ctt--karten .ctt-groups--media .ctt-event {
+			grid-template-areas: "visual main" "actions actions";
 			grid-template-columns: auto minmax(0, 1fr);
 			align-items: start;
+			min-height: 0;
 		}
 
-		.ctt--karten .ctt-event__date {
+		.ctt--karten .ctt-groups--media .ctt-event__media {
+			display: none;
+		}
+
+		.ctt--karten .ctt-event__date,
+		.ctt--karten .ctt-groups--media .ctt-event__date {
 			align-self: start;
+			justify-self: start;
 			width: 58px;
-			margin: 14px 0 14px 14px;
+			margin: 14px 0 10px 14px;
 		}
 
 		.ctt--karten .ctt-event__main {
-			padding: 14px 14px 6px;
-		}
-
-		.ctt--karten .ctt-event__actions {
-			justify-content: flex-start;
-			padding: 2px 14px 14px;
+			align-self: center;
+			padding: 12px 14px 10px;
 		}
 
 		.ctt--karten .ctt-event__city {
@@ -1522,33 +1657,37 @@
 			font-size: 16px;
 		}
 
-		/* Mit Bildern: Bild oben, Kalenderblatt darauf, Text darunter. */
-		.ctt--karten .ctt-groups--media .ctt-event {
-			grid-template-areas: "visual" "main" "actions";
-			grid-template-columns: minmax(0, 1fr);
-			min-height: 0;
+		.ctt--karten .ctt-event__status {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 4px 10px;
+			margin-top: 4px;
 		}
 
-		.ctt--karten .ctt-groups--media .ctt-event__date {
-			margin: 12px;
+		.ctt--karten .ctt-event__status .ctt-price {
+			font-size: 16px;
 		}
 
-		.ctt--karten .ctt-groups--media .ctt-event__media {
-			min-height: 0;
-			aspect-ratio: 16 / 9;
+		.ctt--karten .ctt-event__actions > .ctt-badge,
+		.ctt--karten .ctt-event__actions .ctt-price {
+			display: none;
 		}
 
-		.ctt--karten .ctt-groups--media .ctt-event__media--empty {
-			min-height: 98px;
-			aspect-ratio: auto;
+		.ctt--karten .ctt-event__actions {
+			justify-content: flex-start;
+			gap: 6px;
+			padding: 0 14px 14px;
 		}
 
-		.ctt--karten .ctt-groups--media .ctt-event__main {
-			padding: 14px 16px 6px;
+		.ctt--karten .ctt-icon {
+			width: 36px;
+			height: 36px;
 		}
 
-		.ctt--karten .ctt-groups--media .ctt-event__actions {
-			padding: 2px 16px 16px;
+		.ctt--karten .ctt-event__actions > .ctt-buy,
+		.ctt--karten .ctt-event__actions > .ctt-ticket {
+			margin-left: auto;
 		}
 
 		.ctt--liste .ctt-event,
