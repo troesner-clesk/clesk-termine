@@ -62,6 +62,7 @@ final class Clesk_Termine_Block {
 		$data = array(
 			'programs'  => Clesk_Termine_Events::distinct_titles( true ),
 			'singlePages' => Clesk_Termine_Events::has_single_pages(),
+			'searchMin'   => Clesk_Termine_Render::SEARCH_MIN,
 			'manageUrl' => admin_url( 'edit.php?post_type=' . Clesk_Termine_Events::POST_TYPE ),
 			'newUrl'    => admin_url( 'post-new.php?post_type=' . Clesk_Termine_Events::POST_TYPE ),
 		);
@@ -73,7 +74,7 @@ final class Clesk_Termine_Block {
 	}
 
 	/**
-	 * Shortcode, z. B. [termine design="liste" filter="stadt,monat" zeitraum="kommende"].
+	 * Shortcode, z. B. [termine design="liste" filter="stadt,monat" suche="nein" zeitraum="kommende"].
 	 *
 	 * @param array|string $atts Shortcode-Attribute.
 	 * @return string
@@ -83,6 +84,7 @@ final class Clesk_Termine_Block {
 			array(
 				'design'      => 'karten',
 				'filter'      => 'stadt,location,monat',
+				'suche'       => 'ja',
 				'monate'      => 'ja',
 				'bilder'      => 'ja',
 				'karte'       => 'ja',
@@ -111,6 +113,7 @@ final class Clesk_Termine_Block {
 			'filterCity'   => in_array( 'stadt', $filters, true ),
 			'filterVenue'  => in_array( 'location', $filters, true ),
 			'filterMonth'  => in_array( 'monat', $filters, true ),
+			'showSearch'   => self::truthy( $atts['suche'] ),
 			'groupByMonth' => self::truthy( $atts['monate'] ),
 			'showImages'   => self::truthy( $atts['bilder'] ),
 			'showMap'      => self::truthy( $atts['karte'] ),

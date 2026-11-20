@@ -1,6 +1,6 @@
 /**
- * Block „Termine“ und Terminseiten: Filter (Stadt, Location, Monat), Teilen und Link kopieren.
- * Ohne JavaScript bleibt die Filterleiste verborgen und alle Termine sichtbar,
+ * Block „Termine“ und Terminseiten: Suche, Filter (Stadt, Location, Monat), Teilen und Link kopieren.
+ * Ohne JavaScript bleibt die Filterleiste samt Suchfeld verborgen und alle Termine sichtbar,
  * Teilen-Links führen dann zum Abschnitt „Termin teilen“ der Terminseite.
  */
 ( function () {
@@ -8,6 +8,30 @@
 
 	function toArray( list ) {
 		return Array.prototype.slice.call( list );
+	}
+
+	/**
+	 * Text für den Vergleich: klein, ohne Akzente, ß als ss („Düsseldorf“ → „dusseldorf“).
+	 */
+	function fold( text ) {
+		text = String( text || '' ).toLowerCase().replace( /ß/g, 'ss' );
+		if ( text.normalize ) {
+			text = text.normalize( 'NFD' ).replace( /[\u0300-\u036f]/g, '' );
+		}
+		return text.replace( /\s+/g, ' ' ).trim();
+	}
+
+	/**
+	 * Suchtext eines Termins. Enthält Umlaute zusätzlich in der Schreibweise mit e,
+	 * damit auch „duesseldorf“ oder „muenchen“ passen.
+	 */
+	function haystack( text ) {
+		var spelled = String( text || '' )
+			.replace( /ä/g, 'ae' ).replace( /ö/g, 'oe' ).replace( /ü/g, 'ue' )
+			.replace( /Ä/g, 'Ae' ).replace( /Ö/g, 'Oe' ).replace( /Ü/g, 'Ue' );
+		var plain = fold( text );
+		var alt = fold( spelled );
+		return alt === plain ? plain : plain + ' ' + alt;
 	}
 
 	function init( root ) {
@@ -19,7 +43,8 @@
 			return;
 		}
 		var selects = toArray( bar.querySelectorAll( 'select[data-ctt-filter]' ) );
-		if ( ! selects.length ) {
+		var search = bar.querySelector( 'input[data-ctt-search]' );
+		if ( ! selects.length && ! search ) {
 			return;
 		}
 		root.setAttribute( 'data-ctt-ready', '1' );
@@ -32,6 +57,11 @@
 		var empty = root.querySelector( '.ctt-empty--filter' );
 		var one = root.getAttribute( 'data-ctt-one' ) || '1 Termin';
 		var many = root.getAttribute( 'data-ctt-many' ) || '%d Termine';
+		var texts = items.map( function ( item ) {
+			return haystack( item.getAttribute( 'data-search' ) );
+		} );
+		var typing = 0;
+		var speaking = 0;
 
 		function state() {
 			var s = {};
@@ -43,6 +73,21 @@
 			return s;
 		}
 
+		// Suchwörter; jedes muss im Termin vorkommen.
+		function terms() {
+			var value = search ? fold( search.value ) : '';
+			return value ? value.split( ' ' ) : [];
+		}
+
+		function found( index, words ) {
+			for ( var i = 0; i < words.length; i++ ) {
+				if ( texts[ index ].indexOf( words[ i ] ) === -1 ) {
+					return false;
+				}
+			}
+			return true;
+		}
+
 		function matches( item, s, skip ) {
 			for ( var key in s ) {
 				if ( key !== skip && item.getAttribute( 'data-' + key ) !== s[ key ] ) {
@@ -52,13 +97,24 @@
 			return true;
 		}
 
-		function apply() {
-			var s = state();
-			var active = Object.keys( s ).length > 0;
-			var shown = 0;
+		function announce( text ) {
+			if ( count ) {
+				count.textContent = text;
+			}
+		}
 
-			items.forEach( function ( item ) {
-				var ok = matches( item, s );
+		// quiet: beim Tippen die Trefferzahl erst nach einer Pause ansagen, damit Screenreader nicht jede Taste vorlesen.
+		function apply( quiet ) {
+			var s = state();
+			var words = terms();
+			var active = Object.keys( s ).length > 0 || words.length > 0;
+			var shown = 0;
+			var hits = items.map( function ( item, index ) {
+				return found( index, words );
+			} );
+
+			items.forEach( function ( item, index ) {
+				var ok = hits[ index ] && matches( item, s );
 				item.hidden = ! ok;
 				if ( ok ) {
 					shown++;
@@ -69,12 +125,12 @@
 				group.hidden = ! group.querySelector( '.ctt-item:not([hidden])' );
 			} );
 
-			// Nur Werte anbieten, die zusammen mit den anderen Filtern Treffer haben.
+			// Nur Werte anbieten, die zusammen mit den anderen Filtern und der Suche Treffer haben.
 			selects.forEach( function ( select ) {
 				var key = select.getAttribute( 'data-ctt-filter' );
 				var available = {};
-				items.forEach( function ( item ) {
-					if ( matches( item, s, key ) ) {
+				items.forEach( function ( item, index ) {
+					if ( hits[ index ] && matches( item, s, key ) ) {
 						available[ item.getAttribute( 'data-' + key ) ] = true;
 					}
 				} );
@@ -95,26 +151,67 @@
 			if ( empty ) {
 				empty.hidden = shown > 0;
 			}
-			if ( count ) {
-				count.textContent = active ? ( shown === 1 ? one : many.replace( '%d', shown ) ) : '';
+
+			var text = active ? ( shown === 1 ? one : many.replace( '%d', shown ) ) : '';
+			window.clearTimeout( speaking );
+			if ( quiet && text ) {
+				speaking = window.setTimeout( function () {
+					announce( text );
+				}, 500 );
+			} else {
+				announce( text );
 			}
 		}
 
+		function reset() {
+			window.clearTimeout( typing );
+			selects.forEach( function ( select ) {
+				select.value = '';
+			} );
+			if ( search ) {
+				search.value = '';
+			}
+			apply();
+		}
+
 		selects.forEach( function ( select ) {
-			select.addEventListener( 'change', apply );
+			select.addEventListener( 'change', function () {
+				apply();
+			} );
 		} );
+
+		if ( search ) {
+			search.addEventListener( 'input', function () {
+				window.clearTimeout( typing );
+				typing = window.setTimeout( function () {
+					apply( true );
+				}, 150 );
+			} );
+			search.addEventListener( 'keydown', function ( event ) {
+				if ( event.key === 'Enter' ) {
+					event.preventDefault();
+					window.clearTimeout( typing );
+					apply();
+				} else if ( ( event.key === 'Escape' || event.key === 'Esc' ) && search.value ) {
+					event.preventDefault();
+					window.clearTimeout( typing );
+					search.value = '';
+					apply();
+				}
+			} );
+		}
+
 		resets.forEach( function ( button ) {
 			button.addEventListener( 'click', function () {
-				selects.forEach( function ( select ) {
-					select.value = '';
-				} );
-				apply();
-				selects[ 0 ].focus();
+				reset();
+				( search || selects[ 0 ] ).focus();
 			} );
 		} );
 
 		// Beim Zurückblättern stellt der Browser die Auswahl wieder her, ohne ein Ereignis zu senden.
-		window.addEventListener( 'pageshow', apply );
+		window.addEventListener( 'pageshow', function () {
+			apply();
+		} );
 
 		bar.hidden = false;
 		apply();

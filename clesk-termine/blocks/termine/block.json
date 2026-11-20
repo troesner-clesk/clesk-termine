@@ -2,11 +2,11 @@
 	"$schema": "https://schemas.wp.org/trunk/block.json",
 	"apiVersion": 3,
 	"name": "clesk/termine",
-	"version": "1.3.1",
+	"version": "1.4.0",
 	"title": "Termine",
 	"category": "widgets",
 	"icon": "tickets-alt",
-	"description": "Zeigt die Veranstaltungen aus dem Menü „Termine“ mit Ticket-Links, Links zu den Terminseiten und Filtern für Stadt, Location und Monat.",
+	"description": "Zeigt die Veranstaltungen aus dem Menü „Termine“ mit Ticket-Links, Links zu den Terminseiten, Suche und Filtern für Stadt, Location und Monat.",
 	"keywords": [ "termine", "tickets", "veranstaltungen", "tour", "events", "auftritte" ],
 	"textdomain": "clesk-termine",
 	"attributes": {
@@ -24,6 +24,10 @@
 			"default": true
 		},
 		"filterMonth": {
+			"type": "boolean",
+			"default": true
+		},
+		"showSearch": {
 			"type": "boolean",
 			"default": true
 		},

@@ -89,7 +89,8 @@
 
 .ctt a:focus-visible,
 .ctt button:focus-visible,
-.ctt select:focus-visible {
+.ctt select:focus-visible,
+.ctt input:focus-visible {
 	outline: 3px solid var(--ctt-text);
 	outline-offset: 2px;
 }
@@ -207,6 +208,65 @@
 	color: var(--ctt-muted);
 	font-size: 14px;
 	text-align: center;
+}
+
+/* Suchfeld: erstes Element der Filterleiste, gleiche Höhe und Rundung wie die Filter, aber hell. */
+
+.ctt .ctt-search {
+	position: relative;
+	/* Kleine Grundbreite, damit Suche und drei Filter ab 900 px Containerbreite in eine Zeile passen. */
+	flex: 1 1 180px;
+	max-width: 420px;
+	min-width: 0;
+}
+
+.ctt .ctt-search__icon {
+	position: absolute;
+	top: 50%;
+	left: 14px;
+	width: 18px;
+	height: 18px;
+	color: var(--ctt-accent);
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.ctt .ctt-search .ctt-search__input,
+.ctt .ctt-search .ctt-search__input:focus {
+	-webkit-appearance: none;
+	appearance: none;
+	display: block;
+	width: 100%;
+	max-width: none;
+	height: auto;
+	min-height: 46px;
+	margin: 0;
+	padding: 11px 14px 11px 42px;
+	border: 2px solid var(--ctt-accent);
+	border-radius: var(--ctt-radius);
+	background: var(--ctt-bg);
+	box-shadow: none;
+	color: var(--ctt-text);
+	font: inherit;
+	/* Ab 16px zoomt iOS beim Antippen nicht in die Seite. */
+	font-size: 16px;
+	font-weight: 400;
+	line-height: 1.2;
+	letter-spacing: normal;
+	text-transform: none;
+}
+
+.ctt .ctt-search .ctt-search__input::placeholder {
+	color: var(--ctt-muted);
+	opacity: 1;
+}
+
+.ctt .ctt-search .ctt-search__input::-webkit-search-decoration {
+	-webkit-appearance: none;
+}
+
+.ctt .ctt-search .ctt-search__input::-webkit-search-cancel-button {
+	cursor: pointer;
 }
 
 /* Gruppen und gemeinsame Bausteine ------------------------------------ */
@@ -1154,6 +1214,12 @@
 
 /* Mittlere Breite (Tablet hochkant, 200 % Zoom): Aktionen unter den Text, damit er nicht zusammengedrückt wird. */
 @container ctt (min-width: 620.02px) and (max-width: 900px) {
+	/* Suche in eigener Zeile über den Filtern. */
+	.ctt .ctt-search {
+		flex: 1 1 100%;
+		max-width: none;
+	}
+
 	.ctt--karten .ctt-event {
 		grid-template-areas: "visual main" "visual actions";
 		grid-template-columns: auto minmax(0, 1fr);
@@ -1196,8 +1262,10 @@
 }
 
 @container ctt (max-width: 620px) {
+	.ctt .ctt-search,
 	.ctt .ctt-filter {
 		flex: 1 1 100%;
+		max-width: none;
 	}
 
 	.ctt .ctt-group__title {
@@ -1366,6 +1434,11 @@
  */
 @supports not (container-type: inline-size) {
 	@media (min-width: 700.02px) and (max-width: 980px) {
+		.ctt .ctt-search {
+			flex: 1 1 100%;
+			max-width: none;
+		}
+
 		.ctt--karten .ctt-event {
 			grid-template-areas: "visual main" "visual actions";
 			grid-template-columns: auto minmax(0, 1fr);
@@ -1408,8 +1481,10 @@
 	}
 
 	@media (max-width: 700px) {
+		.ctt .ctt-search,
 		.ctt .ctt-filter {
 			flex: 1 1 100%;
+			max-width: none;
 		}
 
 		.ctt .ctt-group__title {

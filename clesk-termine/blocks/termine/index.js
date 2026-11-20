@@ -110,7 +110,8 @@
 					),
 					el(
 						c.PanelBody,
-						{ title: 'Filter', initialOpen: true },
+						{ title: 'Suche und Filter', initialOpen: true },
+						toggle( props, 'showSearch', 'Suchfeld', 'Sucht in Stadt, Programm, Location, Hinweis und Monat. Erscheint ab ' + ( data.searchMin || 6 ) + ' Terminen in der Liste.' ),
 						toggle( props, 'filterCity', 'Stadt' ),
 						toggle( props, 'filterVenue', 'Location' ),
 						toggle( props, 'filterMonth', 'Monat' ),

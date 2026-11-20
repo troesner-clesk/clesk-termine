@@ -16,6 +16,11 @@ final class Clesk_Termine_Render {
 	const RANGES  = array( 'upcoming', 'past', 'all' );
 
 	/**
+	 * Das Suchfeld erscheint erst ab so vielen Terminen in der Liste.
+	 */
+	const SEARCH_MIN = 6;
+
+	/**
 	 * Laufende Nummer für eindeutige IDs bei mehreren Listen auf einer Seite.
 	 *
 	 * @var int
@@ -40,6 +45,7 @@ final class Clesk_Termine_Render {
 			'filterCity'   => true,
 			'filterVenue'  => true,
 			'filterMonth'  => true,
+			'showSearch'   => true,
 			'groupByMonth' => true,
 			'showImages'   => true,
 			'showMap'      => true,
@@ -66,7 +72,7 @@ final class Clesk_Termine_Render {
 
 		$a['design'] = in_array( $a['design'], self::DESIGNS, true ) ? $a['design'] : 'karten';
 		$a['range']  = in_array( $a['range'], self::RANGES, true ) ? $a['range'] : 'upcoming';
-		foreach ( array( 'filterCity', 'filterVenue', 'filterMonth', 'groupByMonth', 'showImages', 'showMap', 'linkDetails', 'showShare' ) as $flag ) {
+		foreach ( array( 'filterCity', 'filterVenue', 'filterMonth', 'showSearch', 'groupByMonth', 'showImages', 'showMap', 'linkDetails', 'showShare' ) as $flag ) {
 			$a[ $flag ] = (bool) $a[ $flag ];
 		}
 		$a['limit']       = max( 0, min( 500, (int) $a['limit'] ) );
@@ -130,10 +136,11 @@ final class Clesk_Termine_Render {
 		}
 
 		$filters = self::filter_options( $events, $a );
+		$search  = $a['showSearch'] && count( $events ) >= self::SEARCH_MIN;
 
 		$html = '<div' . $inner_html . '>';
-		if ( $filters ) {
-			$html .= self::filters_html( $filters, $uid, $editor );
+		if ( $filters || $search ) {
+			$html .= self::filters_html( $filters, $search, $uid, $editor );
 		}
 
 		if ( ! $events ) {
@@ -154,15 +161,22 @@ final class Clesk_Termine_Render {
 				}
 				$html .= '<ul class="ctt-list" role="list">';
 				foreach ( $group['events'] as $event ) {
-					$html .= self::item_html( $event, $a, $has_media );
+					$html .= self::item_html( $event, $a, $has_media, $search );
 				}
 				$html .= '</ul></div>';
 			}
 			$html .= '</div>';
 
-			if ( $filters ) {
-				$html .= '<div class="ctt-empty ctt-empty--filter" hidden><p>' . esc_html__( 'Keine Termine für diese Auswahl.', 'clesk-termine' ) . '</p>'
-					. '<button type="button" class="ctt-reset ctt-reset--inline">' . esc_html__( 'Filter zurücksetzen', 'clesk-termine' ) . '</button></div>';
+			if ( $filters || $search ) {
+				if ( $search && $filters ) {
+					$reset = __( 'Suche und Filter zurücksetzen', 'clesk-termine' );
+				} elseif ( $search ) {
+					$reset = __( 'Suche zurücksetzen', 'clesk-termine' );
+				} else {
+					$reset = __( 'Filter zurücksetzen', 'clesk-termine' );
+				}
+				$html .= '<div class="ctt-empty ctt-empty--filter" hidden><p>' . esc_html__( 'Keine Termine gefunden.', 'clesk-termine' ) . '</p>'
+					. '<button type="button" class="ctt-reset ctt-reset--inline">' . esc_html( $reset ) . '</button></div>';
 			}
 		}
 		$html .= '</div>';
@@ -252,14 +266,15 @@ final class Clesk_Termine_Render {
 	}
 
 	/**
-	 * Filterleiste. Ohne JavaScript bleibt sie verborgen und alle Termine sichtbar.
+	 * Filterleiste mit Suchfeld. Ohne JavaScript bleibt sie verborgen und alle Termine sichtbar.
 	 *
 	 * @param array  $filters Filterwerte.
+	 * @param bool   $search  Suchfeld ausgeben.
 	 * @param string $uid     Eindeutiges Präfix.
 	 * @param bool   $editor  Editor-Vorschau (Leiste sichtbar, ohne Funktion).
 	 * @return string
 	 */
-	private static function filters_html( array $filters, $uid, $editor ) {
+	private static function filters_html( array $filters, $search, $uid, $editor ) {
 		$meta = array(
 			'city'  => array( __( 'Stadt', 'clesk-termine' ), __( 'Alle Städte', 'clesk-termine' ), 'pin' ),
 			'venue' => array( __( 'Location', 'clesk-termine' ), __( 'Alle Locations', 'clesk-termine' ), 'venue' ),
@@ -267,6 +282,16 @@ final class Clesk_Termine_Render {
 		);
 
 		$html = '<div class="ctt-filters" role="group" aria-label="' . esc_attr__( 'Termine filtern', 'clesk-termine' ) . '"' . ( $editor ? '' : ' hidden' ) . '>';
+		if ( $search ) {
+			$id    = $uid . '-search';
+			$html .= '<div class="ctt-search">';
+			$html .= '<label class="ctt-sr" for="' . esc_attr( $id ) . '">' . esc_html__( 'Termine durchsuchen', 'clesk-termine' ) . '</label>';
+			$html .= self::icon( 'search', 'ctt-search__icon' );
+			$html .= '<input type="search" id="' . esc_attr( $id ) . '" class="ctt-search__input" data-ctt-search'
+				. ' placeholder="' . esc_attr__( 'Ort, Programm oder Location', 'clesk-termine' ) . '"'
+				. ' autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search">';
+			$html .= '</div>';
+		}
 		foreach ( $filters as $key => $options ) {
 			$id    = $uid . '-' . $key;
 			$html .= '<div class="ctt-filter ctt-filter--' . esc_attr( $key ) . '">';
@@ -321,9 +346,10 @@ final class Clesk_Termine_Render {
 	 * @param array $e         Termin.
 	 * @param array $a         Attribute.
 	 * @param bool  $has_media Bildspalte anzeigen.
+	 * @param bool  $search    Suchtext für das Suchfeld mitgeben.
 	 * @return string
 	 */
-	private static function item_html( array $e, array $a, $has_media ) {
+	private static function item_html( array $e, array $a, $has_media, $search = false ) {
 		$classes = array( 'ctt-event' );
 		if ( '' !== $e['status'] ) {
 			$classes[] = 'ctt-event--' . $e['status'];
@@ -332,7 +358,13 @@ final class Clesk_Termine_Render {
 			$classes[] = 'ctt-event--past';
 		}
 
-		$html  = '<li class="ctt-item" data-city="' . esc_attr( $e['city_key'] ) . '" data-venue="' . esc_attr( $e['venue_key'] ) . '" data-month="' . esc_attr( $e['month_key'] ) . '">';
+		$html = '<li class="ctt-item" data-city="' . esc_attr( $e['city_key'] ) . '" data-venue="' . esc_attr( $e['venue_key'] ) . '" data-month="' . esc_attr( $e['month_key'] ) . '"';
+		if ( $search ) {
+			// Durchsuchte Angaben in Klartext. Groß- und Kleinschreibung und Akzente gleicht view.js aus.
+			$text  = implode( ' ', array_filter( array( $e['city'], $e['title'], $e['venue'], $e['note'], $e['month_label'] ), 'strlen' ) );
+			$html .= ' data-search="' . esc_attr( $text ) . '"';
+		}
+		$html .= '>';
 		$html .= '<div class="' . esc_attr( implode( ' ', $classes ) ) . '">';
 		$html .= '<div class="ctt-event__date" aria-hidden="true">' . self::date_html( $e, $a ) . '</div>';
 		if ( $has_media ) {
@@ -935,6 +967,7 @@ final class Clesk_Termine_Render {
 			'calendar' => '<path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/>',
 			'venue'    => '<path d="M10 18v-7"/><path d="M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="M3 22h18"/><path d="M6 18v-7"/>',
 			'close'    => '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+			'search'   => '<path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
 			'share'    => '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
 			'copy'     => '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
 			'mail'     => '<path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/>',

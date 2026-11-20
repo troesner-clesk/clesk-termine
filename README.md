@@ -1,6 +1,6 @@
 # Termine & Tickets
 
-WordPress-Plugin für Auftrittstermine von Künstlerinnen, Künstlern und Veranstaltungsreihen. Termine werden im Backend gepflegt und mit dem Block „Termine“ (oder einem Shortcode) auf einer Seite ausgegeben, wahlweise in drei Designs und mit Filtern für Stadt, Location und Monat. Jeder Termin hat zusätzlich eine eigene Seite zum Teilen.
+WordPress-Plugin für Auftrittstermine von Künstlerinnen, Künstlern und Veranstaltungsreihen. Termine werden im Backend gepflegt und mit dem Block „Termine“ (oder einem Shortcode) auf einer Seite ausgegeben, wahlweise in drei Designs, mit Suchfeld und Filtern für Stadt, Location und Monat. Jeder Termin hat zusätzlich eine eigene Seite zum Teilen.
 
 ## Funktionen
 
@@ -12,6 +12,7 @@ WordPress-Plugin für Auftrittstermine von Künstlerinnen, Künstlern und Verans
 - Preis (optional): Der günstigste Preis erscheint als „ab 18 €“ vor dem Ticket-Button (im Design „Tickets“ beim Status), auch ohne Vorverkauf; 0 erscheint als „Eintritt frei“. Bei vergangenen, ausverkauften, abgesagten und geschlossenen Terminen entfällt er, beim Status „Eintritt frei“ steht nur das Badge. Eingaben wie „18,50“, „ab 18 €“, „18,-“ oder „frei“ werden verstanden. Google bekommt den Preis über die strukturierten Daten und kann ihn in der Terminanzeige zeigen.
 - Block „Termine“ mit drei Designs: Karten, Liste, Tickets. Das Design wird im Editor am Block gewählt (Seitenleiste „Block“, Bereich „Darstellung“). Im Karten-Design steht bei Terminen ohne Bild ein Ticketsymbol in der Bildfläche.
 - Filter für Stadt, Location und Monat ohne Neuladen. Ein Filter erscheint nur, wenn es mindestens zwei Werte gibt; nicht kombinierbare Werte werden ausgegraut. Ohne JavaScript bleiben alle Termine sichtbar.
+- Suchfeld vor den Filtern, ab 6 Terminen in der Liste: filtert beim Tippen nach Stadt, Programm, Location, Hinweis sowie Monat und Jahr (etwa „märz 2027“). Groß- und Kleinschreibung und Akzente zählen nicht („munchen“, „muenchen“ und „München“ finden dasselbe), bei mehreren Wörtern müssen alle vorkommen. Die Suche wirkt zusammen mit den Filtern, deren Werte ohne Treffer werden ausgegraut. Escape leert das Feld; ohne Treffer erscheint „Keine Termine gefunden“ mit einem Knopf zum Zurücksetzen. Abschaltbar am Block und im Shortcode, ohne JavaScript ausgeblendet.
 - Vergangene Termine verschwinden am Tag nach dem Termin automatisch aus den Listen (Zeitzone der Website). Eine Liste kann alternativ vergangene oder alle Termine zeigen, etwa als Archiv.
 - Eigene Seite je Termin unter `/termine/programm-stadt-datum/` mit Eckdaten, Bild, Beschreibung, Ticket-Button, Karte, Teilen und weiteren Terminen desselben Programms.
 - Teilen: auf Geräten mit Teilen-Dialog öffnet sich dieser, sonst stehen WhatsApp, Facebook, E-Mail und „Link kopieren“ bereit. Alles reine Links, es werden keine fremden Skripte geladen.
@@ -24,7 +25,7 @@ WordPress-Plugin für Auftrittstermine von Künstlerinnen, Künstlern und Verans
 1. ZIP bauen: `bash scripts/build-zip.sh` erzeugt `dist/clesk-termine.zip`.
 2. In WordPress unter Plugins → Plugin hinzufügen → Plugin hochladen die ZIP-Datei hochladen und aktivieren.
 3. Unter „Termine“ die Veranstaltungen anlegen.
-4. Auf der gewünschten Seite den Block „Termine“ einfügen und in der Seitenleiste Design, Filter und Zeitraum wählen.
+4. Auf der gewünschten Seite den Block „Termine“ einfügen und in der Seitenleiste Design, Suche, Filter und Zeitraum wählen.
 
 Für ein Update dieselbe Datei erneut hochladen; WordPress fragt dann, ob die installierte Version durch die hochgeladene ersetzt werden soll. Die Termine bleiben erhalten, auch beim Deaktivieren oder Löschen des Plugins. Die Adressen der Terminseiten richtet das Plugin beim ersten Seitenaufruf nach Installation oder Update selbst ein.
 
@@ -56,7 +57,8 @@ Voraussetzungen: WordPress 6.3 oder neuer, PHP 7.4 oder neuer. Der HTML-Anker de
 | Darstellung | Terminseiten verlinken | an |
 | Darstellung | Teilen-Symbol anzeigen | an |
 | Darstellung | Beschriftung Ticket-Button | Tickets |
-| Filter | Stadt, Location, Monat | alle an |
+| Suche und Filter | Suchfeld (erscheint ab 6 Terminen) | an |
+| Suche und Filter | Stadt, Location, Monat | alle an |
 | Auswahl | Zeitraum: kommende, vergangene, alle | kommende |
 | Auswahl | Programm (nur Termine mit genau diesem Titel) | alle |
 | Auswahl | Höchstens anzeigen (0 = alle, intern höchstens 500). Bei „alle“ zählen zuerst die nächsten Termine, dann die jüngsten vergangenen | 0 |
@@ -74,6 +76,7 @@ Für Stellen ohne Block-Editor:
 |---|---|---|
 | `design` | `karten`, `liste`, `ticket` | `karten` |
 | `filter` | Liste aus `stadt`, `location`, `monat` oder leer | `stadt,location,monat` |
+| `suche` | Suchfeld (ab 6 Terminen): `ja`, `nein` | `ja` |
 | `monate` | Nach Monaten gruppieren: `ja`, `nein` | `ja` |
 | `bilder` | `ja`, `nein` | `ja` |
 | `karte` | `ja`, `nein` | `ja` |

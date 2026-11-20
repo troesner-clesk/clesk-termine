@@ -992,6 +992,7 @@ final class Clesk_Termine_Single {
 			'filterCity'   => false,
 			'filterVenue'  => false,
 			'filterMonth'  => false,
+			'showSearch'   => false,
 			'groupByMonth' => false,
 			'range'        => 'upcoming',
 			'program'      => $e['title'],
